@@ -27,7 +27,7 @@ export const insertBookSchema = createInsertSchema(books).omit({
 export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof books.$inferSelect;
 
-// Session storage table for Replit Auth
+// Session storage table for user sessions
 export const sessions = pgTable(
   "sessions",
   {
@@ -50,7 +50,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   passwordHash: varchar("password_hash"), // For username/password auth
-  authProvider: varchar("auth_provider").default("local"), // local, google, facebook, microsoft, auth0, replit
+  authProvider: varchar("auth_provider").default("local"), // local, facebook, microsoft, auth0
   providerId: varchar("provider_id"), // ID from OAuth provider
   subscriptionTier: varchar("subscription_tier").default("free"), // free, premium
   stripeCustomerId: varchar("stripe_customer_id"), // Stripe customer ID

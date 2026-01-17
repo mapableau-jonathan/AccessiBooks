@@ -16,34 +16,15 @@ async function getAccessToken(): Promise<SpotifyTokens> {
     return cachedTokens;
   }
   
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+  // Spotify tokens should be configured via environment variables or database
+  // For now, this requires manual configuration
+  const accessToken = process.env.SPOTIFY_ACCESS_TOKEN;
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+  const expiresIn = parseInt(process.env.SPOTIFY_EXPIRES_IN || '3600', 10);
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  const connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=spotify',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-  
-  const refreshToken = connectionSettings?.settings?.oauth?.credentials?.refresh_token;
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
-  const clientId = connectionSettings?.settings?.oauth?.credentials?.client_id;
-  const expiresIn = connectionSettings?.settings?.oauth?.credentials?.expires_in || 3600;
-  
-  if (!connectionSettings || !accessToken || !clientId || !refreshToken) {
-    throw new Error('Spotify not connected');
+  if (!accessToken || !clientId || !refreshToken) {
+    throw new Error('Spotify not configured. Please set SPOTIFY_ACCESS_TOKEN, SPOTIFY_CLIENT_ID, and SPOTIFY_REFRESH_TOKEN environment variables.');
   }
   
   // Cache the tokens with expiration

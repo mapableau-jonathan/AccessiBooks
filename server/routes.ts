@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupPassport, isAuthenticated } from "./auth";
 import { setupMultiAuth } from "./multiAuth";
 import { getUncachableSpotifyClient, isSpotifyConnected } from "./spotifyClient";
 import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG } from "./stripe";
@@ -33,33 +33,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Setup authentication routes: /api/login, /api/callback, /api/logout (Replit Auth)
-  await setupAuth(app);
+  // Setup passport and session
+  setupPassport(app);
   
   // Setup multi-provider authentication: local, Facebook, Microsoft, Auth0
   setupMultiAuth(app);
 
-  // Auth user endpoint - supports both Replit Auth and local auth
+  // Auth user endpoint
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       if (!req.isAuthenticated() || !req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Check if this is a Replit Auth user (has claims.sub)
-      if (req.user.claims?.sub) {
-        const userId = req.user.claims.sub;
-        const user = await storage.getUser(userId);
-        
-        if (!user) {
-          console.error(`User ${userId} not found in database`);
-          return res.status(404).json({ message: "User not found" });
-        }
-        
-        return res.json(user);
-      }
-      
-      // Local auth user - user object stored directly in session
+      // User object stored directly in session
       if (req.user.id) {
         const { passwordHash, ...userWithoutPassword } = req.user;
         return res.json(userWithoutPassword);

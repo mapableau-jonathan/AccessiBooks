@@ -342,19 +342,6 @@ function LandingPage() {
                 
                 {/* Social Login Buttons */}
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Replit Auth (Google, GitHub, Apple, X, email) */}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => window.location.href = "/api/login"}
-                    data-testid="button-replit-auth"
-                  >
-                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
-                    </svg>
-                    Replit
-                  </Button>
-                  
                   {/* Facebook */}
                   {providers?.facebook && (
                     <Button
@@ -402,9 +389,9 @@ function LandingPage() {
                   )}
                 </div>
                 
-                {/* Info about Replit Auth providers */}
+                {/* Info about auth providers */}
                 <p className="text-xs text-center text-muted-foreground">
-                  Replit Auth supports Google, GitHub, Apple, X (Twitter), and email login
+                  Sign up or log in with email, or use OAuth providers when configured
                 </p>
               </CardContent>
             </Card>

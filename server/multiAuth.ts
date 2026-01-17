@@ -136,7 +136,7 @@ if (process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID && process.env.AUTH0
 }
 
 export function setupMultiAuth(app: Express) {
-  // Note: passport.initialize() and passport.session() are already set up in replitAuth.ts
+  // Note: passport.initialize() and passport.session() are already set up in auth.ts
   
   // Local registration
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -242,13 +242,25 @@ export function setupMultiAuth(app: Express) {
       facebook: !!process.env.FACEBOOK_APP_ID,
       microsoft: !!process.env.MICROSOFT_CLIENT_ID,
       auth0: !!process.env.AUTH0_DOMAIN,
-      google: true, // Via Replit Auth
-      github: true, // Via Replit Auth
-      apple: true, // Via Replit Auth
+      google: false, // Not configured
+      github: false, // Not configured
+      apple: false, // Not configured
     });
   });
 
-  // Local logout (for local auth)
+  // Logout endpoint (works for all auth providers)
+  app.get("/api/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      req.session?.destroy(() => {
+        res.redirect("/");
+      });
+    });
+  });
+
+  // Local logout (for local auth) - also available for backward compatibility
   app.post("/api/auth/logout/local", (req, res) => {
     req.logout((err) => {
       if (err) {

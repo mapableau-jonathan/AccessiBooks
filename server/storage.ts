@@ -22,7 +22,7 @@ export interface IStorage {
   createBook(book: InsertBook): Promise<Book>;
   searchBooks(query: string): Promise<Book[]>;
   
-  // User management (Replit Auth)
+  // User management
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
