@@ -1,11 +1,19 @@
 interface AccessiBooksLogoProps {
   className?: string;
   showText?: boolean;
+  onClick?: () => void;
 }
 
-export function AccessiBooksLogo({ className = "", showText = true }: AccessiBooksLogoProps) {
+export function AccessiBooksLogo({ className = "", showText = true, onClick }: AccessiBooksLogoProps) {
   return (
-    <div className={`flex items-center ${className}`}>
+    <div 
+      className={`flex items-center ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      aria-label={onClick ? "Toggle navigation menu" : undefined}
+    >
       {/* Logo Icon */}
       <div className="mr-3">
         <svg
