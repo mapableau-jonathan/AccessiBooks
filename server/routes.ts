@@ -9,6 +9,22 @@ import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG, DONATION_CONFIG, DO
 import { rateLimitMiddleware, drmGuardMiddleware, premiumContentMiddleware, generateSignedStreamUrl } from "./drm";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, isPayPalEnabled } from "./paypal";
 import { createCoinbaseCharge, getCoinbaseCharge, handleCoinbaseWebhook, getPaymentMethods, isCoinbaseEnabled } from "./coinbase";
+import {
+  getSkipStatus,
+  useSkip,
+  getAudioQuality,
+  getQualityBitrate,
+  registerDevice,
+  removeDevice,
+  getDevices,
+  createPlaybackSession,
+  validatePlaybackSession,
+  heartbeat,
+  endPlaybackSession,
+  getActiveSession,
+  shouldShowAd,
+  isShuffleModeRequired,
+} from "./monetization";
 import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -913,6 +929,321 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/payment-methods - Get available payment methods
   app.get("/api/payment-methods", async (req, res) => {
     await getPaymentMethods(req, res);
+  });
+
+  // ============================================
+  // Monetization & DRM Controls (Spotify-like)
+  // ============================================
+
+  // GET /api/monetization/skip-status - Get skip limit status
+  app.get("/api/monetization/skip-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+      const status = getSkipStatus(userId, isPremium);
+
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting skip status:", error);
+      res.status(500).json({ message: "Failed to get skip status" });
+    }
+  });
+
+  // POST /api/monetization/use-skip - Use a skip (for free users)
+  app.post("/api/monetization/use-skip", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+      const result = useSkip(userId, isPremium);
+
+      if (!result.success) {
+        return res.status(429).json({
+          success: false,
+          remaining: result.remaining,
+          message: result.message,
+          upgradeUrl: "/api/subscription/create-checkout",
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error using skip:", error);
+      res.status(500).json({ message: "Failed to use skip" });
+    }
+  });
+
+  // GET /api/monetization/audio-quality - Get audio quality for user
+  app.get("/api/monetization/audio-quality", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+      const quality = getAudioQuality(isPremium);
+      const bitrate = getQualityBitrate(quality);
+
+      res.json({
+        quality,
+        bitrate,
+        isPremium,
+        upgradeMessage: !isPremium ? "Upgrade to Premium for 320kbps high-quality audio" : null,
+      });
+    } catch (error) {
+      console.error("Error getting audio quality:", error);
+      res.status(500).json({ message: "Failed to get audio quality" });
+    }
+  });
+
+  // GET /api/monetization/devices - Get registered devices
+  app.get("/api/monetization/devices", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const devices = getDevices(userId);
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+      const maxDevices = isPremium ? 5 : 1;
+
+      res.json({
+        devices,
+        maxDevices,
+        isPremium,
+      });
+    } catch (error) {
+      console.error("Error getting devices:", error);
+      res.status(500).json({ message: "Failed to get devices" });
+    }
+  });
+
+  // POST /api/monetization/devices/register - Register a device
+  app.post("/api/monetization/devices/register", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { deviceId, deviceName } = req.body;
+      if (!deviceId || !deviceName) {
+        return res.status(400).json({ message: "Device ID and name required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+      const result = registerDevice(userId, deviceId, deviceName, isPremium);
+
+      if (!result.success) {
+        return res.status(403).json({
+          success: false,
+          devices: result.devices,
+          message: result.message,
+          upgradeUrl: !isPremium ? "/api/subscription/create-checkout" : null,
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error registering device:", error);
+      res.status(500).json({ message: "Failed to register device" });
+    }
+  });
+
+  // DELETE /api/monetization/devices/:deviceId - Remove a device
+  app.delete("/api/monetization/devices/:deviceId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { deviceId } = req.params;
+      const result = removeDevice(userId, deviceId);
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error removing device:", error);
+      res.status(500).json({ message: "Failed to remove device" });
+    }
+  });
+
+  // POST /api/monetization/session/start - Start playback session
+  app.post("/api/monetization/session/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { deviceId, bookId } = req.body;
+      if (!deviceId || !bookId) {
+        return res.status(400).json({ message: "Device ID and book ID required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+
+      const registerResult = registerDevice(userId, deviceId, req.headers["user-agent"] || "Unknown Device", isPremium);
+      if (!registerResult.success) {
+        return res.status(403).json({
+          success: false,
+          message: registerResult.message,
+          upgradeUrl: !isPremium ? "/api/subscription/create-checkout" : null,
+        });
+      }
+
+      const sessionResult = createPlaybackSession(userId, deviceId, bookId, isPremium);
+
+      res.json({
+        ...sessionResult,
+        bitrate: getQualityBitrate(sessionResult.quality),
+        isPremium,
+      });
+    } catch (error) {
+      console.error("Error starting playback session:", error);
+      res.status(500).json({ message: "Failed to start playback session" });
+    }
+  });
+
+  // POST /api/monetization/session/heartbeat - Send session heartbeat
+  app.post("/api/monetization/session/heartbeat", isAuthenticated, async (req: any, res) => {
+    try {
+      const { sessionId, deviceId } = req.body;
+      if (!sessionId || !deviceId) {
+        return res.status(400).json({ message: "Session ID and device ID required" });
+      }
+
+      const result = heartbeat(sessionId, deviceId);
+
+      if (!result.success) {
+        return res.status(403).json({
+          success: false,
+          message: result.message,
+          sessionInvalid: true,
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing heartbeat:", error);
+      res.status(500).json({ message: "Failed to process heartbeat" });
+    }
+  });
+
+  // POST /api/monetization/session/end - End playback session
+  app.post("/api/monetization/session/end", isAuthenticated, async (req: any, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID required" });
+      }
+
+      endPlaybackSession(sessionId);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error ending playback session:", error);
+      res.status(500).json({ message: "Failed to end playback session" });
+    }
+  });
+
+  // GET /api/monetization/session/active - Get active session
+  app.get("/api/monetization/session/active", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const session = getActiveSession(userId);
+
+      res.json({
+        hasActiveSession: !!session,
+        session: session ? {
+          sessionId: session.sessionId,
+          deviceId: session.deviceId,
+          bookId: session.bookId,
+          quality: session.quality,
+          startedAt: session.startedAt,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error getting active session:", error);
+      res.status(500).json({ message: "Failed to get active session" });
+    }
+  });
+
+  // GET /api/monetization/playback-rules - Get playback rules for content
+  app.get("/api/monetization/playback-rules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { contentType = "single" } = req.query;
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+
+      const skipStatus = getSkipStatus(userId, isPremium);
+      const quality = getAudioQuality(isPremium);
+      const shuffleRequired = isShuffleModeRequired(isPremium, contentType as "album" | "playlist" | "single");
+
+      res.json({
+        isPremium,
+        skipStatus,
+        quality,
+        bitrate: getQualityBitrate(quality),
+        shuffleRequired,
+        showAds: !isPremium,
+        maxDevices: isPremium ? 5 : 1,
+        offlineEnabled: isPremium,
+        upgradeUrl: !isPremium ? "/api/subscription/create-checkout" : null,
+      });
+    } catch (error) {
+      console.error("Error getting playback rules:", error);
+      res.status(500).json({ message: "Failed to get playback rules" });
+    }
+  });
+
+  // GET /api/monetization/should-show-ad - Check if ad should be shown
+  app.get("/api/monetization/should-show-ad", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { booksPlayed = 0 } = req.query;
+      const user = await storage.getUser(userId);
+      const isPremium = user?.subscriptionTier === "premium";
+
+      const showAd = shouldShowAd(userId, isPremium, parseInt(booksPlayed as string, 10));
+
+      res.json({
+        showAd,
+        isPremium,
+        upgradeMessage: showAd ? "Upgrade to Premium for ad-free listening" : null,
+      });
+    } catch (error) {
+      console.error("Error checking ad status:", error);
+      res.status(500).json({ message: "Failed to check ad status" });
+    }
   });
 
   const httpServer = createServer(app);

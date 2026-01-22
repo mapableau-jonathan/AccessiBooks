@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
+import { validatePlaybackSession, getActiveSession } from "./monetization";
 
 const SIGNING_SECRET = process.env.DRM_SIGNING_SECRET;
 if (!SIGNING_SECRET) {
@@ -122,6 +123,31 @@ export async function drmGuardMiddleware(req: Request, res: Response, next: Next
     });
   }
   
+  next();
+}
+
+export async function sessionEnforcementMiddleware(req: Request, res: Response, next: NextFunction) {
+  const sessionId = req.headers["x-playback-session"] as string | undefined;
+  const deviceId = req.headers["x-device-id"] as string | undefined;
+  const userId = (req as any).user?.id || (req as any).user?.claims?.sub;
+
+  if (!userId) {
+    return next();
+  }
+
+  const activeSession = getActiveSession(userId);
+  
+  if (activeSession && sessionId && deviceId) {
+    const validation = validatePlaybackSession(sessionId, deviceId);
+    if (!validation.valid) {
+      return res.status(403).json({
+        message: validation.message || "Playback session invalid",
+        sessionInvalid: true,
+        reason: "concurrent_stream",
+      });
+    }
+  }
+
   next();
 }
 
