@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
   - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (for Google OAuth)
   - FACEBOOK_APP_ID, FACEBOOK_APP_SECRET (for Facebook OAuth)
   - MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET (for Microsoft OAuth)
+  - AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET (for Auth0 M2M authentication)
 
 ### Accessibility Features
 - **Visual Accessibility**: High contrast mode, dyslexia-friendly font options, dark mode support
