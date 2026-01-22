@@ -38,18 +38,22 @@ Preferred communication style: Simple, everyday language.
 - **In-Memory Storage**: Fallback storage implementation with sample data for development
 
 ### Authentication and Authorization
-- **System**: Replit Auth (OpenID Connect OAuth 2.0)
-- **Providers**: Google, GitHub, Apple, X (Twitter), email/password
+- **System**: Passport.js with multiple OAuth providers
+- **Providers**: 
+  - Google OAuth 2.0 (passport-google-oauth20)
+  - Facebook OAuth (passport-facebook)
+  - Microsoft OAuth (passport-microsoft)
+  - Local email/password authentication (passport-local with bcrypt)
 - **Session Management**: PostgreSQL-backed sessions via connect-pg-simple
   - 30-day session duration (extended for uninterrupted playback)
   - Rolling session expiry (resets on each request for active users)
-- **Token Handling**: Automatic access token refresh using refresh tokens
-  - Silent refresh middleware refreshes tokens ~5-10 minutes before expiry
-  - Background refresh every 10 minutes while tab is visible
-  - Visibility-based re-authentication when tab becomes active
 - **User Storage**: PostgreSQL database with Drizzle ORM
-- **Security**: sameSite cookies, httpOnly, secure in production, CSRF protection
+- **Security**: sameSite cookies, httpOnly, secure in production, bcrypt password hashing
 - **Client Integration**: useAuth React hook with TanStack Query auto-refresh, landing page for logged-out users
+- **Required Environment Variables**:
+  - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (for Google OAuth)
+  - FACEBOOK_APP_ID, FACEBOOK_APP_SECRET (for Facebook OAuth)
+  - MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET (for Microsoft OAuth)
 
 ### Accessibility Features
 - **Visual Accessibility**: High contrast mode, dyslexia-friendly font options, dark mode support
