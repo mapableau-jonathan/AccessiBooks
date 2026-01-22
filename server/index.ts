@@ -5,7 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 const app = express();
 
 // Stripe webhook needs raw body for signature verification
-app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // All other routes use JSON parsing
 app.use(express.json());

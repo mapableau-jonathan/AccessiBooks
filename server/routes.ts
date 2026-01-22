@@ -5,7 +5,9 @@ import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupMultiAuth } from "./multiAuth";
 import { getUncachableSpotifyClient, isSpotifyConnected } from "./spotifyClient";
-import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG } from "./stripe";
+import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG, DONATION_CONFIG, DONATION_AMOUNTS, verifyWebhookSignature } from "./stripe";
+import { rateLimitMiddleware, drmGuardMiddleware, premiumContentMiddleware, generateSignedStreamUrl } from "./drm";
+import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Enable CORS for same-origin requests (more secure than wildcard)
@@ -114,6 +116,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/books/:id/stream-url - Get a signed streaming URL for a book
+  // Requires authentication for security
+  app.get("/api/books/:id/stream-url", async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ 
+          message: "Authentication required to get stream URL",
+          loginRequired: true,
+        });
+      }
+      
+      const { id } = req.params;
+      const book = await storage.getBook(id);
+      
+      if (!book) {
+        return res.status(404).json({ message: "Book not found" });
+      }
+      
+      const userId = req.user?.claims?.sub || req.user?.id;
+      
+      // Check premium content requirement
+      if (id.startsWith("premium-")) {
+        const user = await storage.getUser(userId);
+        if (!user || user.subscriptionTier !== "premium") {
+          return res.status(403).json({
+            message: "Premium subscription required to access this content",
+            premiumRequired: true,
+          });
+        }
+      }
+      
+      const signedUrl = generateSignedStreamUrl(id, userId);
+      
+      res.json({ 
+        streamUrl: signedUrl,
+        expiresIn: 15 * 60,
+      });
+    } catch (error) {
+      console.error("Error generating stream URL:", error);
+      res.status(500).json({ message: "Failed to generate stream URL" });
+    }
+  });
+
   // GET /api/books/:id/chapters - Get chapters for a book (LibriVox only)
   app.get("/api/books/:id/chapters", async (req, res) => {
     try {
@@ -133,7 +178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/stream/:id - Stream audio (redirect to actual audio URL)
-  app.get("/api/stream/:id", async (req, res) => {
+  // Protected by rate limiting, DRM guard, and premium content check
+  app.get("/api/stream/:id", rateLimitMiddleware, drmGuardMiddleware, premiumContentMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
       const book = await storage.getBook(id);
@@ -399,6 +445,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to cancel subscription" });
     }
   });
+
+  // POST /api/donation/create-checkout - Create donation checkout session
+  app.post("/api/donation/create-checkout", async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment system not configured" });
+      }
+      
+      const { amount } = req.body;
+      const amountInCents = parseInt(amount);
+      
+      if (!amountInCents || amountInCents < 100) {
+        return res.status(400).json({ message: "Minimum donation is $1" });
+      }
+      
+      if (amountInCents > 100000) {
+        return res.status(400).json({ message: "Maximum donation is $1,000" });
+      }
+      
+      let customerId: string | undefined;
+      
+      if (req.isAuthenticated() && req.user) {
+        const userId = req.user.claims?.sub || req.user.id;
+        const user = await storage.getUser(userId);
+        
+        if (user?.stripeCustomerId) {
+          customerId = user.stripeCustomerId;
+        } else if (user) {
+          const customer = await stripe.customers.create({
+            email: user.email || undefined,
+            metadata: { userId: user.id },
+          });
+          customerId = customer.id;
+          await storage.updateUserSubscription(userId, { stripeCustomerId: customerId });
+        }
+      }
+      
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: DONATION_CONFIG.productName,
+                description: DONATION_CONFIG.description,
+              },
+              unit_amount: amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${req.headers.origin || "http://localhost:5000"}?donation=success`,
+        cancel_url: `${req.headers.origin || "http://localhost:5000"}?donation=cancelled`,
+        metadata: {
+          type: "donation",
+          userId: req.user?.claims?.sub || req.user?.id || "anonymous",
+        },
+      });
+      
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating donation checkout:", error);
+      res.status(500).json({ message: "Failed to create donation checkout" });
+    }
+  });
+
+  // GET /api/donation/amounts - Get suggested donation amounts
+  app.get("/api/donation/amounts", (req, res) => {
+    res.json({
+      amounts: DONATION_AMOUNTS,
+      currency: "usd",
+      minimum: 100,
+      maximum: 100000,
+    });
+  });
+
+  // POST /api/webhooks/stripe - Stripe webhook handler
+  app.post(
+    "/api/webhooks/stripe",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      
+      if (!webhookSecret) {
+        console.warn("STRIPE_WEBHOOK_SECRET not configured - webhook verification disabled");
+        return res.status(400).json({ message: "Webhook secret not configured" });
+      }
+      
+      const signature = req.headers["stripe-signature"] as string;
+      
+      if (!signature) {
+        return res.status(400).json({ message: "Missing stripe-signature header" });
+      }
+      
+      const event = verifyWebhookSignature(req.body, signature, webhookSecret);
+      
+      if (!event) {
+        return res.status(400).json({ message: "Invalid webhook signature" });
+      }
+      
+      try {
+        switch (event.type) {
+          case "checkout.session.completed": {
+            const session = event.data.object as any;
+            const userId = session.metadata?.userId;
+            
+            if (session.mode === "subscription" && userId) {
+              await storage.updateUserSubscription(userId, {
+                subscriptionTier: "premium",
+                stripeSubscriptionId: session.subscription,
+                stripeCustomerId: session.customer,
+              });
+              console.log(`User ${userId} upgraded to premium via checkout`);
+            } else if (session.metadata?.type === "donation") {
+              console.log(`Donation received: $${(session.amount_total / 100).toFixed(2)} from ${userId || "anonymous"}`);
+            }
+            break;
+          }
+          
+          case "customer.subscription.updated": {
+            const subscription = event.data.object as any;
+            const customerId = subscription.customer;
+            
+            const user = await storage.getUserByStripeCustomerId(customerId);
+            if (user) {
+              const status = subscription.status;
+              const isPremium = status === "active" || status === "trialing";
+              
+              await storage.updateUserSubscription(user.id, {
+                subscriptionTier: isPremium ? "premium" : "free",
+                subscriptionEndDate: subscription.current_period_end 
+                  ? new Date(subscription.current_period_end * 1000) 
+                  : null,
+              });
+              console.log(`Subscription updated for user ${user.id}: ${status}`);
+            }
+            break;
+          }
+          
+          case "customer.subscription.deleted": {
+            const subscription = event.data.object as any;
+            const customerId = subscription.customer;
+            
+            const user = await storage.getUserByStripeCustomerId(customerId);
+            if (user) {
+              await storage.updateUserSubscription(user.id, {
+                subscriptionTier: "free",
+                stripeSubscriptionId: null,
+                subscriptionEndDate: null,
+              });
+              console.log(`Subscription cancelled for user ${user.id}`);
+            }
+            break;
+          }
+          
+          case "invoice.payment_succeeded": {
+            const invoice = event.data.object as any;
+            console.log(`Payment succeeded for invoice ${invoice.id}`);
+            break;
+          }
+          
+          case "invoice.payment_failed": {
+            const invoice = event.data.object as any;
+            const customerId = invoice.customer;
+            
+            const user = await storage.getUserByStripeCustomerId(customerId);
+            if (user) {
+              console.warn(`Payment failed for user ${user.id}, invoice ${invoice.id}`);
+            }
+            break;
+          }
+          
+          default:
+            console.log(`Unhandled webhook event: ${event.type}`);
+        }
+        
+        res.json({ received: true });
+      } catch (error) {
+        console.error("Webhook processing error:", error);
+        res.status(500).json({ message: "Webhook processing failed" });
+      }
+    }
+  );
   
   // ============== LISTENING HISTORY API ==============
   

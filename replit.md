@@ -164,8 +164,35 @@ Preferred communication style: Simple, everyday language.
 - `stripeSubscriptionId`: Active subscription reference
 - `subscriptionEndDate`: Subscription expiration date
 
+### Donation System
+- **One-time payments**: Support voluntary donations via Stripe Checkout
+- **Suggested amounts**: $5, $10, $25, $50 or custom amount
+- **Anonymous support**: Donations work for both logged-in and guest users
+- **DonationCard component**: UI for selecting and processing donations
+
 ### Frontend Components
 - **AdBanner**: Conditional display based on subscription status
 - **SubscriptionCard**: Full subscription management UI
 - **PremiumBadge**: Visual indicator for premium status
+- **DonationCard**: Donation form with amount selection
 - **useSubscription hook**: React hook for subscription state management
+
+## DRM and Content Protection
+
+### Security Architecture
+- **Auth-Gated Streaming**: Audio streams require authentication
+- **Signed URLs**: Time-limited (15 min) HMAC-signed streaming URLs
+- **Rate Limiting**: 30 requests per minute per user to prevent bulk downloading
+- **Premium Content Gating**: Books with "premium-" prefix require active subscription
+
+### DRM Implementation
+- **server/drm.ts**: Core DRM middleware module
+- **Signature Verification**: HMAC-SHA256 with timing-safe comparison
+- **URL Expiration**: Automatic expiration after 15 minutes
+- **Environment Variable**: DRM_SIGNING_SECRET (required for production)
+
+### Rate Limiting
+- **Window**: 60 seconds
+- **Limit**: 30 requests per user
+- **Headers**: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
+- **Cleanup**: Automatic entry expiration
