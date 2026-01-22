@@ -100,9 +100,16 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => setIsPlaying(false);
-    const handleError = () => {
+    const handleError = (e: Event) => {
       setIsLoading(false);
-      console.error("Audio failed to load");
+      const error = (e.target as HTMLAudioElement)?.error;
+      
+      // If stream fails due to auth, continue local playback without disruption
+      if (error?.code === MediaError.MEDIA_ERR_NETWORK) {
+        console.log("Network error during playback, will retry on next interaction");
+      } else {
+        console.error("Audio failed to load:", error?.message);
+      }
     };
 
     audio.addEventListener("loadstart", handleLoadStart);

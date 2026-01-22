@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, real, timestamp, jsonb, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -27,16 +27,7 @@ export const insertBookSchema = createInsertSchema(books).omit({
 export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof books.$inferSelect;
 
-// NextAuth sessions table
-export const authSessions = pgTable("auth_sessions", {
-  sessionToken: varchar("session_token").primaryKey(),
-  userId: varchar("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expires: timestamp("expires").notNull(),
-});
-
-// Legacy session storage table for express-session (kept for migration)
+// Session storage table for Replit Auth
 export const sessions = pgTable(
   "sessions",
   {
@@ -51,14 +42,17 @@ export const sessions = pgTable(
 export const SUBSCRIPTION_TIERS = ["free", "premium"] as const;
 export type SubscriptionTier = typeof SUBSCRIPTION_TIERS[number];
 
-// User table for multi-provider authentication (NextAuth compatible)
+// User table for multi-provider authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name"),
+  username: varchar("username").unique(),
   email: varchar("email").unique(),
-  emailVerified: timestamp("email_verified"),
-  image: varchar("image"),
-  passwordHash: varchar("password_hash"),
+  password: varchar("password"),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  authProvider: varchar("auth_provider").default("local"),
+  providerId: varchar("provider_id"),
   subscriptionTier: varchar("subscription_tier").default("free"),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
@@ -102,40 +96,6 @@ export const insertListeningHistorySchema = createInsertSchema(listeningHistory)
 
 export type InsertListeningHistory = z.infer<typeof insertListeningHistorySchema>;
 export type ListeningHistory = typeof listeningHistory.$inferSelect;
-
-// NextAuth accounts table for OAuth providers
-export const accounts = pgTable(
-  "accounts",
-  {
-    userId: varchar("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: varchar("type").notNull(),
-    provider: varchar("provider").notNull(),
-    providerAccountId: varchar("provider_account_id").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: varchar("token_type"),
-    scope: varchar("scope"),
-    id_token: text("id_token"),
-    session_state: varchar("session_state"),
-  },
-  (account) => [
-    primaryKey({ columns: [account.provider, account.providerAccountId] }),
-  ]
-);
-
-// NextAuth verification tokens
-export const verificationTokens = pgTable(
-  "verification_tokens",
-  {
-    identifier: varchar("identifier").notNull(),
-    token: varchar("token").notNull(),
-    expires: timestamp("expires").notNull(),
-  },
-  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
-);
 
 // Bookmark type for frontend use
 export interface Bookmark {

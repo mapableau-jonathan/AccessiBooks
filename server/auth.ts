@@ -57,11 +57,12 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    rolling: true, // Reset session expiry on each request for seamless experience
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // Enable secure cookies in production
-      httpOnly: true, // Prevent XSS attacks
-      sameSite: 'lax', // CSRF protection
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for extended sessions
     }
   };
 
@@ -91,7 +92,7 @@ export function setupAuth(app: Express) {
         } else if (user) {
           // This is a local user, use local password verification
           console.log(`Local user ${username}, checking password`);
-          const isValidPassword = await comparePasswords(password, user.password);
+          const isValidPassword = await comparePasswords(password, user.password || '');
           
           if (!isValidPassword) {
             console.log(`Invalid password for local user ${username}`);

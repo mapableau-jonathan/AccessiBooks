@@ -19,7 +19,7 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000;
+  const sessionTtl = 30 * 24 * 60 * 60 * 1000; // 30 days for extended sessions
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -35,10 +35,11 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset session expiry on each request for seamless experience
     cookie: {
       httpOnly: true,
-      secure: isProduction, // Only secure in production (HTTPS), false for local dev (HTTP)
-      sameSite: "lax", // CSRF protection
+      secure: isProduction,
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
@@ -154,7 +155,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+  const bufferTime = 5 * 60; // Refresh 5 minutes before expiry for seamless experience
+  
+  if (now <= user.expires_at - bufferTime) {
     return next();
   }
 
@@ -168,9 +171,47 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    
+    // Touch session to keep it alive
+    if (req.session) {
+      req.session.touch();
+    }
+    
     return next();
   } catch (error) {
+    console.error("Token refresh failed:", error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
+};
+
+// Silent refresh middleware - refreshes tokens in background without blocking
+export const silentRefreshMiddleware: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+  
+  if (!req.isAuthenticated() || !user?.expires_at) {
+    return next();
+  }
+  
+  const now = Math.floor(Date.now() / 1000);
+  const refreshThreshold = 10 * 60; // Start refreshing 10 minutes before expiry
+  
+  if (now > user.expires_at - refreshThreshold && user.refresh_token) {
+    // Perform silent refresh in background (non-blocking)
+    (async () => {
+      try {
+        const config = await getOidcConfig();
+        const tokenResponse = await client.refreshTokenGrant(config, user.refresh_token);
+        updateUserSession(user, tokenResponse);
+        
+        if (req.session) {
+          req.session.touch();
+        }
+      } catch (error) {
+        console.log("Silent token refresh failed, will retry on next request");
+      }
+    })();
+  }
+  
+  next();
 };
