@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Book } from "@shared/schema";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,10 @@ import { AdBanner } from "@/components/ad-banner";
 import { ContinueListening } from "@/components/continue-listening";
 import { GenreCards } from "@/components/genre-cards";
 import { ForYouSection } from "@/components/for-you-section";
-import { Search, Library as LibraryIcon } from "lucide-react";
+import { ListeningStatsCard } from "@/components/listening-stats";
+import { LibraryCollections } from "@/components/library-collections";
+import { BookCarousel } from "@/components/book-carousel";
+import { Search, Library as LibraryIcon, Clock, TrendingUp, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface LibraryProps {
@@ -55,6 +58,16 @@ export function Library({ onSelectBook }: LibraryProps) {
     setSearchQuery("");
   };
 
+  // Group books by source for carousels
+  const booksBySource = useMemo(() => {
+    const librivox = books.filter(b => b.source === "librivox").slice(0, 12);
+    const itunes = books.filter(b => b.source === "itunes").slice(0, 12);
+    const googleBooks = books.filter(b => b.source === "google-books").slice(0, 12);
+    const openLibrary = books.filter(b => b.source === "open-library").slice(0, 12);
+    const newest = [...books].sort((a, b) => (b.publishedYear || 0) - (a.publishedYear || 0)).slice(0, 12);
+    return { librivox, itunes, googleBooks, openLibrary, newest };
+  }, [books]);
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -68,15 +81,69 @@ export function Library({ onSelectBook }: LibraryProps) {
   const showPersonalizedSections = user && !searchQuery && !isLoading;
 
   return (
-    <div>
+    <div className="space-y-8">
+      {/* Listening Stats for logged in users */}
+      {showPersonalizedSections && (
+        <ListeningStatsCard />
+      )}
+
       {/* Continue Listening - only show when logged in and not searching */}
       {showPersonalizedSections && (
         <ContinueListening onSelectBook={onSelectBook} books={books} />
       )}
 
+      {/* My Collections - only show when logged in */}
+      {showPersonalizedSections && (
+        <LibraryCollections books={books} />
+      )}
+
       {/* For You recommendations - only show when logged in and not searching */}
       {showPersonalizedSections && (
         <ForYouSection books={books} onSelectBook={onSelectBook} />
+      )}
+
+      {/* Horizontal carousels by source */}
+      {!isLoading && !searchQuery && !selectedGenre && (
+        <div className="space-y-8">
+          {booksBySource.newest.length > 0 && (
+            <BookCarousel
+              title="New & Trending"
+              books={booksBySource.newest}
+              onBookSelect={onSelectBook}
+              icon={TrendingUp}
+            />
+          )}
+          {booksBySource.librivox.length > 0 && (
+            <BookCarousel
+              title="Free Audiobooks from LibriVox"
+              books={booksBySource.librivox}
+              onBookSelect={onSelectBook}
+              icon={Sparkles}
+            />
+          )}
+          {booksBySource.itunes.length > 0 && (
+            <BookCarousel
+              title="Popular on iTunes"
+              books={booksBySource.itunes}
+              onBookSelect={onSelectBook}
+              icon={Clock}
+            />
+          )}
+          {booksBySource.googleBooks.length > 0 && (
+            <BookCarousel
+              title="From Google Books"
+              books={booksBySource.googleBooks}
+              onBookSelect={onSelectBook}
+            />
+          )}
+          {booksBySource.openLibrary.length > 0 && (
+            <BookCarousel
+              title="Open Library Collection"
+              books={booksBySource.openLibrary}
+              onBookSelect={onSelectBook}
+            />
+          )}
+        </div>
       )}
 
       {/* Genre browsing */}

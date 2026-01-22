@@ -28,7 +28,7 @@ export function useAudioPlayer({ bookId, audioUrl }: UseAudioPlayerProps = {}) {
     }
   }, [bookId]);
 
-  // Save progress periodically
+  // Save progress and update listening stats periodically
   useEffect(() => {
     if (!bookId) return;
 
@@ -40,6 +40,8 @@ export function useAudioPlayer({ bookId, audioUrl }: UseAudioPlayerProps = {}) {
           lastPlayed: new Date().toISOString(),
         };
         localStorageService.saveProgress(progress);
+        // Update listening stats every 5 seconds of active playback
+        localStorageService.addListeningTime(5);
       }
     }, 5000); // Save every 5 seconds
 
@@ -129,8 +131,13 @@ export function useAudioPlayer({ bookId, audioUrl }: UseAudioPlayerProps = {}) {
   };
 
   const changeSpeed = (delta: number) => {
-    const newRate = Math.max(0.6, Math.min(3.0, playbackRate + delta));
+    const newRate = Math.max(0.5, Math.min(3.0, playbackRate + delta));
     setPlaybackRate(newRate);
+  };
+
+  const setSpeed = (speed: number) => {
+    const clampedSpeed = Math.max(0.5, Math.min(3.0, speed));
+    setPlaybackRate(clampedSpeed);
   };
 
   const formatTime = (seconds: number) => {
@@ -157,6 +164,7 @@ export function useAudioPlayer({ bookId, audioUrl }: UseAudioPlayerProps = {}) {
     skip,
     seekTo,
     changeSpeed,
+    setSpeed,
     formatTime,
   };
 }
