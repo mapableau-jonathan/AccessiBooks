@@ -8,21 +8,42 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 import { BookmarkList } from "./bookmark-list";
 import { SleepTimer } from "./sleep-timer";
 import { ChapterList } from "./chapter-list";
+import { AddToCollectionButton } from "./library-collections";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Play, 
   Pause, 
-  SkipBack, 
-  SkipForward, 
-  Minus, 
-  Plus,
+  RotateCcw,
+  RotateCw,
   Bookmark as BookmarkIcon,
-  Loader2
+  Loader2,
+  Gauge,
+  Car,
+  ListMusic,
+  ChevronDown
 } from "lucide-react";
 
 interface AudioPlayerProps {
   book: Book;
 }
+
+const SPEED_OPTIONS = [
+  { label: "0.5x", value: 0.5 },
+  { label: "0.75x", value: 0.75 },
+  { label: "1x", value: 1.0 },
+  { label: "1.25x", value: 1.25 },
+  { label: "1.5x", value: 1.5 },
+  { label: "1.75x", value: 1.75 },
+  { label: "2x", value: 2.0 },
+  { label: "2.5x", value: 2.5 },
+  { label: "3x", value: 3.0 },
+];
 
 export function AudioPlayer({ book }: AudioPlayerProps) {
   const {
@@ -35,7 +56,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
     togglePlayPause,
     skip,
     seekTo,
-    changeSpeed,
+    setSpeed,
     formatTime,
   } = useAudioPlayer({
     bookId: book.id,
@@ -46,6 +67,8 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
   const [bookmarkName, setBookmarkName] = useState("");
   const [showBookmarkInput, setShowBookmarkInput] = useState(false);
   const [currentChapterId, setCurrentChapterId] = useState<string | undefined>();
+  const [carMode, setCarMode] = useState(false);
+  const [showChapters, setShowChapters] = useState(false);
   const { toast } = useToast();
 
   const handleChapterSelect = (chapter: { id: string; title: string; audioUrl: string }) => {
@@ -59,6 +82,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
       title: "Now playing",
       description: chapter.title,
     });
+    setShowChapters(false);
   };
 
   const handleAddBookmark = () => {
@@ -67,6 +91,10 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
       addBookmark(name, currentTime);
       setBookmarkName("");
       setShowBookmarkInput(false);
+      toast({
+        title: "Bookmark added",
+        description: name,
+      });
     } else {
       setShowBookmarkInput(true);
       setBookmarkName(`Chapter at ${formatTime(currentTime)}`);
@@ -74,13 +102,107 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
   };
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const remainingTime = duration - currentTime;
+
+  if (carMode) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-8">
+        <audio ref={audioRef} preload="metadata" />
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCarMode(false)}
+          className="absolute top-4 right-4"
+          aria-label="Exit car mode"
+        >
+          Exit Car Mode
+        </Button>
+        
+        <div className="text-center mb-8">
+          {book.coverImage && (
+            <img
+              src={book.coverImage}
+              alt={`${book.title} cover`}
+              className="w-32 h-48 object-cover rounded-lg mx-auto mb-4"
+            />
+          )}
+          <h2 className="text-2xl font-bold truncate max-w-md">{book.title}</h2>
+          <p className="text-lg text-muted-foreground">{book.author}</p>
+        </div>
+        
+        <div className="w-full max-w-md mb-8">
+          <Slider
+            value={[progressPercentage]}
+            onValueChange={([value]) => {
+              const newTime = (value / 100) * duration;
+              seekTo(newTime);
+            }}
+            max={100}
+            step={0.1}
+            className="w-full h-3"
+          />
+          <div className="flex justify-between text-lg mt-2">
+            <span>{formatTime(currentTime)}</span>
+            <span>-{formatTime(remainingTime)}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-8">
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => skip(-30)}
+            className="h-20 w-20 rounded-full text-xl"
+            aria-label="Rewind 30 seconds"
+          >
+            <div className="flex flex-col items-center">
+              <RotateCcw className="h-8 w-8" />
+              <span className="text-xs mt-1">30</span>
+            </div>
+          </Button>
+          
+          <Button
+            size="lg"
+            onClick={togglePlayPause}
+            disabled={isLoading}
+            className="h-28 w-28 rounded-full"
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isLoading ? (
+              <Loader2 className="h-12 w-12 animate-spin" />
+            ) : isPlaying ? (
+              <Pause className="h-12 w-12" />
+            ) : (
+              <Play className="h-12 w-12 ml-1" />
+            )}
+          </Button>
+          
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => skip(30)}
+            className="h-20 w-20 rounded-full text-xl"
+            aria-label="Forward 30 seconds"
+          >
+            <div className="flex flex-col items-center">
+              <RotateCw className="h-8 w-8" />
+              <span className="text-xs mt-1">30</span>
+            </div>
+          </Button>
+        </div>
+        
+        <div className="mt-8 text-2xl font-medium">
+          {playbackRate}x Speed
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Hidden audio element */}
       <audio ref={audioRef} preload="metadata" />
 
-      {/* Book info header */}
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-6">
@@ -88,7 +210,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
               <img
                 src={book.coverImage}
                 alt={`${book.title} audiobook cover`}
-                className="w-48 h-72 object-cover rounded-md mx-auto md:mx-0"
+                className="w-48 h-72 object-cover rounded-md mx-auto md:mx-0 shadow-lg"
                 data-testid="img-book-cover"
               />
             )}
@@ -106,7 +228,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
                 </p>
               )}
               {book.description && (
-                <p className="text-sm text-muted-foreground" data-testid="text-book-description">
+                <p className="text-sm text-muted-foreground line-clamp-4" data-testid="text-book-description">
                   {book.description}
                 </p>
               )}
@@ -115,17 +237,15 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
         </CardContent>
       </Card>
 
-      {/* Audio player controls */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-6">
-          {/* Progress section */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-muted-foreground mb-2">
               <span aria-label="Current time" data-testid="text-current-time">
                 {formatTime(currentTime)}
               </span>
-              <span aria-label="Total duration" data-testid="text-total-duration">
-                {formatTime(duration)}
+              <span aria-label="Time remaining" className="text-muted-foreground">
+                -{formatTime(remainingTime)}
               </span>
             </div>
             
@@ -143,16 +263,17 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
             />
           </div>
 
-          {/* Main controls */}
-          <div className="flex items-center justify-center space-x-4 mb-6">
+          <div className="flex items-center justify-center gap-4 mb-6">
             <Button
               size="lg"
-              variant="secondary"
-              onClick={() => skip(-15)}
-              aria-label="Skip backward 15 seconds"
+              variant="ghost"
+              onClick={() => skip(-30)}
+              className="h-14 w-14 rounded-full relative"
+              aria-label="Rewind 30 seconds"
               data-testid="button-skip-backward"
             >
-              <SkipBack className="h-5 w-5" aria-hidden="true" />
+              <RotateCcw className="h-6 w-6" aria-hidden="true" />
+              <span className="absolute -bottom-1 text-[10px] font-medium">30</span>
             </Button>
             
             <Button
@@ -160,65 +281,85 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
               onClick={togglePlayPause}
               disabled={isLoading}
               aria-label={isPlaying ? "Pause audiobook" : "Play audiobook"}
-              className="w-16 h-16"
+              className="h-16 w-16 rounded-full shadow-lg"
               data-testid="button-play-pause"
             >
               {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+                <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
               ) : isPlaying ? (
-                <Pause className="h-6 w-6" aria-hidden="true" />
+                <Pause className="h-7 w-7" aria-hidden="true" />
               ) : (
-                <Play className="h-6 w-6" aria-hidden="true" />
+                <Play className="h-7 w-7 ml-1" aria-hidden="true" />
               )}
             </Button>
             
             <Button
               size="lg"
-              variant="secondary"
-              onClick={() => skip(15)}
-              aria-label="Skip forward 15 seconds"
+              variant="ghost"
+              onClick={() => skip(30)}
+              className="h-14 w-14 rounded-full relative"
+              aria-label="Forward 30 seconds"
               data-testid="button-skip-forward"
             >
-              <SkipForward className="h-5 w-5" aria-hidden="true" />
+              <RotateCw className="h-6 w-6" aria-hidden="true" />
+              <span className="absolute -bottom-1 text-[10px] font-medium">30</span>
             </Button>
           </div>
 
-          {/* Secondary controls */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center space-x-4">
-              <label htmlFor="speed-control" className="text-sm font-medium">
-                Speed:
-              </label>
-              <div className="flex items-center space-x-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => changeSpeed(-0.1)}
-                  aria-label="Decrease playback speed"
-                  data-testid="button-speed-down"
-                >
-                  <Minus className="h-3 w-3" aria-hidden="true" />
-                </Button>
-                
-                <span className="w-12 text-center font-medium" data-testid="text-speed-display">
-                  {playbackRate.toFixed(1)}x
-                </span>
-                
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => changeSpeed(0.1)}
-                  aria-label="Increase playback speed"
-                  data-testid="button-speed-up"
-                >
-                  <Plus className="h-3 w-3" aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1" data-testid="button-speed-selector">
+                    <Gauge className="h-4 w-4" />
+                    {playbackRate}x
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {SPEED_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setSpeed(option.value)}
+                      className={playbackRate === option.value ? "bg-accent" : ""}
+                    >
+                      {option.label}
+                      {playbackRate === option.value && " ✓"}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
               <SleepTimer />
               
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCarMode(true)}
+                className="gap-1"
+                aria-label="Enable car mode"
+                data-testid="button-car-mode"
+              >
+                <Car className="h-4 w-4" />
+                <span className="hidden sm:inline">Car Mode</span>
+              </Button>
+              
+              {book.id.startsWith("librivox-") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowChapters(!showChapters)}
+                  className="gap-1"
+                  aria-label="Show chapters"
+                  data-testid="button-chapters"
+                >
+                  <ListMusic className="h-4 w-4" />
+                  <span className="hidden sm:inline">Chapters</span>
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
               {showBookmarkInput && (
                 <input
                   type="text"
@@ -233,25 +374,27 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
                     }
                   }}
                   placeholder="Bookmark name"
-                  className="px-3 py-2 border border-border rounded-md text-sm"
+                  className="px-3 py-1.5 border border-border rounded-md text-sm w-40"
                   autoFocus
                   data-testid="input-bookmark-name"
                 />
               )}
               <Button
+                variant="outline"
+                size="sm"
                 onClick={handleAddBookmark}
                 aria-label="Bookmark current position"
                 data-testid="button-add-bookmark"
               >
-                <BookmarkIcon className="h-4 w-4 mr-2" aria-hidden="true" />
+                <BookmarkIcon className="h-4 w-4 mr-1" aria-hidden="true" />
                 Bookmark
               </Button>
+              <AddToCollectionButton bookId={book.id} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Live region for screen reader updates */}
       <div
         className="sr-only"
         aria-live="polite"
@@ -262,22 +405,20 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
         speed {playbackRate.toFixed(1)}x
       </div>
 
-      {/* Bookmarks section */}
-      <BookmarkList
-        bookmarks={bookmarks}
-        onJumpTo={seekTo}
-        onRemove={removeBookmark}
-        formatTime={formatTime}
-      />
-
-      {/* Chapter navigation for LibriVox books */}
-      {book.id.startsWith("librivox-") && (
+      {showChapters && book.id.startsWith("librivox-") && (
         <ChapterList
           bookId={book.id}
           onChapterSelect={handleChapterSelect}
           currentChapterId={currentChapterId}
         />
       )}
+
+      <BookmarkList
+        bookmarks={bookmarks}
+        onJumpTo={seekTo}
+        onRemove={removeBookmark}
+        formatTime={formatTime}
+      />
     </div>
   );
 }
