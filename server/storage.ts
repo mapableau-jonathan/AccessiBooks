@@ -274,6 +274,10 @@ function transformExternalUser(externalUser: ExternalUser): User {
     subscriptionEndDate: null,
     createdAt: externalUser.createdAt ? new Date(externalUser.createdAt) : new Date(),
     updatedAt: externalUser.updatedAt ? new Date(externalUser.updatedAt) : new Date(),
+    // Legacy NextAuth columns
+    name: null,
+    emailVerified: null,
+    image: null,
   };
 }
 
