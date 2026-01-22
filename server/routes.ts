@@ -37,27 +37,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup multi-provider authentication: local, Google, Facebook, Microsoft (Passport.js)
   setupMultiAuth(app);
 
-  // Auth user endpoint - supports both Replit Auth and local auth
+  // Auth user endpoint (Passport.js authentication)
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       if (!req.isAuthenticated() || !req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Check if this is a Replit Auth user (has claims.sub)
-      if (req.user.claims?.sub) {
-        const userId = req.user.claims.sub;
-        const user = await storage.getUser(userId);
-        
-        if (!user) {
-          console.error(`User ${userId} not found in database`);
-          return res.status(404).json({ message: "User not found" });
-        }
-        
-        return res.json(user);
-      }
-      
-      // Local auth user - user object stored directly in session
+      // Passport.js stores user object in session
       if (req.user.id) {
         const { passwordHash, ...userWithoutPassword } = req.user;
         return res.json(userWithoutPassword);

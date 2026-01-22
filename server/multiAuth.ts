@@ -5,6 +5,8 @@ import { Strategy as FacebookStrategy } from "passport-facebook";
 import { Strategy as MicrosoftStrategy } from "passport-microsoft";
 import { Strategy as Auth0Strategy } from "passport-auth0";
 import bcrypt from "bcryptjs";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 import { users } from "@shared/schema";
@@ -168,7 +170,52 @@ if (process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID && process.env.AUTH0
 }
 
 export function setupMultiAuth(app: Express) {
-  // Note: passport.initialize() and passport.session() are already set up in replitAuth.ts
+  // Set up session store
+  const sessionTtl = 30 * 24 * 60 * 60 * 1000; // 30 days for extended sessions
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // Session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'development-secret-change-in-production',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    rolling: true, // Reset session expiry on each request
+    cookie: {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: sessionTtl,
+    },
+  }));
+  
+  // Initialize Passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  
+  // Main logout endpoint
+  app.get("/api/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destroy error:", err);
+        }
+        res.redirect("/");
+      });
+    });
+  });
   
   // Local registration
   app.post("/api/auth/register", async (req: Request, res: Response) => {
