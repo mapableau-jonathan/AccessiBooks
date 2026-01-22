@@ -7,6 +7,8 @@ import { setupAuth0Routes, isAuth0Configured } from "./auth0";
 import { getUncachableSpotifyClient, isSpotifyConnected } from "./spotifyClient";
 import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG, DONATION_CONFIG, DONATION_AMOUNTS, verifyWebhookSignature } from "./stripe";
 import { rateLimitMiddleware, drmGuardMiddleware, premiumContentMiddleware, generateSignedStreamUrl } from "./drm";
+import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, isPayPalEnabled } from "./paypal";
+import { createCoinbaseCharge, getCoinbaseCharge, handleCoinbaseWebhook, getPaymentMethods, isCoinbaseEnabled } from "./coinbase";
 import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -852,6 +854,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     res.json({ received: true });
+  });
+
+  // ============================================
+  // PayPal Payment Routes
+  // ============================================
+  
+  // GET /paypal/setup - Get PayPal client token
+  app.get("/paypal/setup", async (req, res) => {
+    await loadPaypalDefault(req, res);
+  });
+
+  // POST /paypal/order - Create PayPal order
+  app.post("/paypal/order", async (req, res) => {
+    await createPaypalOrder(req, res);
+  });
+
+  // POST /paypal/order/:orderID/capture - Capture PayPal order
+  app.post("/paypal/order/:orderID/capture", async (req, res) => {
+    await capturePaypalOrder(req, res);
+  });
+
+  // ============================================
+  // Coinbase Commerce (Cryptocurrency) Routes
+  // ============================================
+  
+  // POST /api/crypto/charge - Create cryptocurrency payment charge
+  app.post("/api/crypto/charge", async (req, res) => {
+    await createCoinbaseCharge(req, res);
+  });
+
+  // GET /api/crypto/charge/:chargeId - Get charge status
+  app.get("/api/crypto/charge/:chargeId", async (req, res) => {
+    await getCoinbaseCharge(req, res);
+  });
+
+  // POST /api/crypto/webhook - Coinbase Commerce webhook
+  app.post("/api/crypto/webhook", async (req, res) => {
+    await handleCoinbaseWebhook(req, res);
+  });
+
+  // ============================================
+  // Payment Methods Discovery
+  // ============================================
+  
+  // GET /api/payment-methods - Get available payment methods
+  app.get("/api/payment-methods", async (req, res) => {
+    await getPaymentMethods(req, res);
   });
 
   const httpServer = createServer(app);
