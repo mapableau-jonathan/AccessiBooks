@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, silentRefreshMiddleware } from "./replitAuth";
 import { setupMultiAuth } from "./multiAuth";
 import { getUncachableSpotifyClient, isSpotifyConnected } from "./spotifyClient";
 import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG, DONATION_CONFIG, DONATION_AMOUNTS, verifyWebhookSignature } from "./stripe";
@@ -40,6 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Setup multi-provider authentication: local, Facebook, Microsoft, Auth0
   setupMultiAuth(app);
+  
+  // Apply silent token refresh middleware globally for seamless re-authentication
+  app.use(silentRefreshMiddleware);
 
   // Auth user endpoint - supports both Replit Auth and local auth
   app.get('/api/auth/user', async (req: any, res) => {
