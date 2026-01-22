@@ -159,12 +159,69 @@ function LandingPage() {
     },
   });
   
+  // Auth0 Login mutation
+  const auth0LoginMutation = useMutation({
+    mutationFn: async (data: { email: string; password: string }) => {
+      const response = await apiRequest("POST", "/api/auth/auth0/login", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Auth0 Login failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Auth0 Register mutation
+  const auth0RegisterMutation = useMutation({
+    mutationFn: async (data: { email: string; password: string; firstName: string; lastName: string }) => {
+      const response = await apiRequest("POST", "/api/auth/auth0/register", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Account created",
+        description: "Please sign in with Auth0",
+      });
+      setIsRegistering(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Auth0 Registration failed",
+        description: error.message || "Could not create account",
+        variant: "destructive",
+      });
+    },
+  });
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isRegistering) {
       registerMutation.mutate(formData);
     } else {
       loginMutation.mutate({ email: formData.email, password: formData.password });
+    }
+  };
+  
+  const handleAuth0Submit = () => {
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Missing credentials",
+        description: "Please enter email and password to use Auth0",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (isRegistering) {
+      auth0RegisterMutation.mutate(formData);
+    } else {
+      auth0LoginMutation.mutate({ email: formData.email, password: formData.password });
     }
   };
   
@@ -389,18 +446,22 @@ function LandingPage() {
                     </Button>
                   )}
                   
-                  {/* Auth0 */}
+                  {/* Auth0 - uses form credentials with M2M API */}
                   {providers?.auth0 && (
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => window.location.href = "/api/auth/auth0"}
+                      onClick={handleAuth0Submit}
+                      disabled={auth0LoginMutation.isPending || auth0RegisterMutation.isPending}
                       data-testid="button-auth0-auth"
                     >
+                      {(auth0LoginMutation.isPending || auth0RegisterMutation.isPending) && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
                       <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M21.98 7.448L19.62 0H4.347L2.02 7.448c-1.352 4.312.03 9.206 3.815 12.015L12.007 24l6.157-4.552c3.755-2.81 5.182-7.688 3.815-12z"/>
                       </svg>
-                      Auth0
+                      {isRegistering ? "Register with Auth0" : "Sign in with Auth0"}
                     </Button>
                   )}
                 </div>

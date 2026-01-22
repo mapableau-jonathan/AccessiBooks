@@ -324,14 +324,14 @@ export function setupMultiAuth(app: Express) {
     );
   }
 
-  // Get available auth providers (Passport.js only - Replit Auth removed)
+  // Get available auth providers
   app.get("/api/auth/providers", (req, res) => {
     res.json({
       local: true, // Always available
       google: !!process.env.GOOGLE_CLIENT_ID, // Via Passport
       facebook: !!process.env.FACEBOOK_APP_ID, // Via Passport
       microsoft: !!process.env.MICROSOFT_CLIENT_ID, // Via Passport
-      auth0: !!process.env.AUTH0_DOMAIN,
+      auth0: !!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID && process.env.AUTH0_CLIENT_SECRET), // Auth0 M2M API
     });
   });
 
