@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import { Strategy as MicrosoftStrategy } from "passport-microsoft";
 import { Strategy as Auth0Strategy } from "passport-auth0";
@@ -41,6 +42,37 @@ passport.use(
     }
   )
 );
+
+// Google Strategy
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "/api/auth/google/callback",
+        scope: ["profile", "email"],
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value;
+          const user = await storage.upsertUser({
+            id: `google-${profile.id}`,
+            email: email || null,
+            firstName: profile.name?.givenName || null,
+            lastName: profile.name?.familyName || null,
+            profileImageUrl: profile.photos?.[0]?.value || null,
+            authProvider: "google",
+            providerId: profile.id,
+          });
+          return done(null, user);
+        } catch (error) {
+          return done(error as Error);
+        }
+      }
+    )
+  );
+}
 
 // Facebook Strategy
 if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
@@ -205,6 +237,16 @@ export function setupMultiAuth(app: Express) {
     })(req, res, next);
   });
 
+  // Google OAuth
+  if (process.env.GOOGLE_CLIENT_ID) {
+    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+    app.get(
+      "/api/auth/google/callback",
+      passport.authenticate("google", { failureRedirect: "/?auth=failed" }),
+      (req, res) => res.redirect("/")
+    );
+  }
+
   // Facebook OAuth
   if (process.env.FACEBOOK_APP_ID) {
     app.get("/api/auth/facebook", passport.authenticate("facebook", { scope: ["email"] }));
@@ -239,12 +281,11 @@ export function setupMultiAuth(app: Express) {
   app.get("/api/auth/providers", (req, res) => {
     res.json({
       local: true, // Always available
-      facebook: !!process.env.FACEBOOK_APP_ID,
-      microsoft: !!process.env.MICROSOFT_CLIENT_ID,
+      google: !!process.env.GOOGLE_CLIENT_ID, // Via Passport
+      facebook: !!process.env.FACEBOOK_APP_ID, // Via Passport
+      microsoft: !!process.env.MICROSOFT_CLIENT_ID, // Via Passport
       auth0: !!process.env.AUTH0_DOMAIN,
-      google: true, // Via Replit Auth
-      github: true, // Via Replit Auth
-      apple: true, // Via Replit Auth
+      replit: true, // Via Replit Auth (Google, GitHub, Apple, X)
     });
   });
 
