@@ -14,7 +14,7 @@ import { useAccessibility } from "@/hooks/use-accessibility";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Book as BookIcon, Play, LogOut, User, Loader2, Mail, Lock, Eye, EyeOff, Crown, Settings, Headphones, Accessibility, BookOpen, Star, Bookmark, Volume2 } from "lucide-react";
+import { Book as BookIcon, Play, LogOut, User, Loader2, Mail, Lock, Eye, EyeOff, Crown, Settings, Headphones, Accessibility, BookOpen, Star, Bookmark, Volume2, Menu, X, ChevronRight, Home, CreditCard, Phone, Shield } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -476,13 +476,17 @@ function LandingPage() {
     }
   ];
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
       {/* Navigation */}
       <nav className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <AccessiBooksLogo />
-          <div className="flex items-center gap-4">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-4">
             <AccessibilityControls />
             <Button variant="ghost" onClick={openLogin} data-testid="nav-sign-in">
               Sign In
@@ -490,6 +494,72 @@ function LandingPage() {
             <Button onClick={openRegister} data-testid="nav-get-started">
               Get Started
             </Button>
+          </div>
+          
+          {/* Mobile Menu Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            data-testid="mobile-menu-toggle"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+        </div>
+        
+        {/* Mobile Menu - Collapsible */}
+        <div 
+          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="container mx-auto px-4 py-4 space-y-4 border-t">
+            <div className="flex justify-center">
+              <AccessibilityControls />
+            </div>
+            <div className="space-y-2">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start" 
+                onClick={() => { openLogin(); setMobileMenuOpen(false); }}
+                data-testid="mobile-nav-sign-in"
+              >
+                <User className="mr-2 h-4 w-4" /> Sign In
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                onClick={() => { openRegister(); setMobileMenuOpen(false); }}
+                data-testid="mobile-nav-get-started"
+              >
+                <Headphones className="mr-2 h-4 w-4" /> Get Started Free
+              </Button>
+            </div>
+            <Separator />
+            <div className="space-y-1">
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+                onClick={() => { openRegister(); setMobileMenuOpen(false); }}
+              >
+                <BookOpen className="h-4 w-4" /> Browse Library
+              </button>
+              <button 
+                className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+                onClick={() => { openRegister(); setMobileMenuOpen(false); }}
+              >
+                <Crown className="h-4 w-4" /> Premium Plans
+              </button>
+              <a 
+                href="https://ausdis.au" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+              >
+                <Phone className="h-4 w-4" /> Contact Us
+              </a>
+            </div>
           </div>
         </div>
       </nav>
@@ -570,9 +640,61 @@ function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-12 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center space-y-6">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* Brand Column */}
+            <div className="md:col-span-1">
+              <AccessiBooksLogo />
+              <p className="mt-4 text-sm text-muted-foreground">
+                Making audiobooks accessible to everyone, regardless of ability.
+              </p>
+            </div>
+            
+            {/* Quick Links */}
+            <div>
+              <h3 className="font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <button onClick={openLogin} className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Home className="h-3 w-3" /> Home
+                  </button>
+                </li>
+                <li>
+                  <button onClick={openRegister} className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" /> Library
+                  </button>
+                </li>
+                <li>
+                  <button onClick={openRegister} className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Crown className="h-3 w-3" /> Premium
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            {/* Support Links */}
+            <div>
+              <h3 className="font-semibold mb-4">Support</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a href="https://ausdis.au" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> Contact Us
+                  </a>
+                </li>
+                <li>
+                  <button onClick={openRegister} className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Accessibility className="h-3 w-3" /> Accessibility
+                  </button>
+                </li>
+                <li>
+                  <a href="https://ausdis.au" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Shield className="h-3 w-3" /> Privacy Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+            
             {/* Australian Disability Ltd Branding */}
-            <div className="flex flex-col items-center space-y-3">
+            <div className="flex flex-col items-center md:items-end space-y-3">
               <a 
                 href="https://ausdis.au" 
                 target="_blank" 
@@ -583,10 +705,10 @@ function LandingPage() {
                 <img 
                   src="/assets/ausdis-logo.jpg" 
                   alt="Australian Disability Ltd - We're for a Fair, Dignified and Equal Society for All People with Disabilities" 
-                  className="h-20 w-auto"
+                  className="h-16 w-auto"
                 />
               </a>
-              <p className="text-sm text-muted-foreground text-center max-w-md">
+              <p className="text-xs text-muted-foreground text-center md:text-right">
                 A project by{" "}
                 <a 
                   href="https://ausdis.au" 
@@ -598,15 +720,14 @@ function LandingPage() {
                 </a>
               </p>
             </div>
-            
-            <div className="border-t w-full max-w-xs" />
-            
-            <p className="text-sm text-muted-foreground">
-              AccessiBooks - Making audiobooks accessible to everyone
-            </p>
-            
+          </div>
+          
+          <div className="border-t pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} Australian Disability Ltd. All rights reserved.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              AccessiBooks - Making audiobooks accessible to everyone
             </p>
           </div>
         </div>
@@ -671,7 +792,48 @@ function MainApp() {
       {/* Header */}
       <AppHeader />
 
-      {/* Navigation */}
+      {/* Breadcrumbs */}
+      <nav className="bg-muted/50 border-b" aria-label="Breadcrumb">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <ol className="flex items-center space-x-2 text-sm">
+            <li>
+              <button 
+                onClick={handleBackToLibrary}
+                className="text-muted-foreground hover:text-primary transition-colors flex items-center"
+              >
+                <Home className="h-4 w-4" />
+                <span className="sr-only">Home</span>
+              </button>
+            </li>
+            <li className="flex items-center">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </li>
+            <li>
+              <button 
+                onClick={handleBackToLibrary}
+                className={`${currentView === "library" ? "text-foreground font-medium" : "text-muted-foreground hover:text-primary"} transition-colors`}
+                aria-current={currentView === "library" ? "page" : undefined}
+              >
+                Library
+              </button>
+            </li>
+            {currentView === "player" && selectedBook && (
+              <>
+                <li className="flex items-center">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                </li>
+                <li>
+                  <span className="text-foreground font-medium truncate max-w-[200px] inline-block" aria-current="page">
+                    {selectedBook.title}
+                  </span>
+                </li>
+              </>
+            )}
+          </ol>
+        </div>
+      </nav>
+
+      {/* Navigation Tabs */}
       <nav className="bg-card border-b border-border" role="tablist" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
