@@ -1,17 +1,8 @@
-# replit.md
+# AccessiBooks
 
 ## Overview
 
-AccessiBooks is a comprehensive audiobook player application designed with accessibility at its core. The application features a robust library management system for browsing audiobooks from multiple sources and a full-featured audio player with advanced playback controls, bookmarking capabilities, and accessibility features including high contrast mode, dyslexia-friendly fonts, and keyboard navigation support.
-
-The platform aggregates content from multiple external APIs to provide users with access to thousands of free and commercial audiobooks and ebooks, including:
-- **iTunes Search API**: 20 audiobooks with preview audio and commercial titles
-- **LibriVox**: 30+ free public domain audiobooks
-- **Open Library**: 20 books with comprehensive metadata
-- **Google Books**: 20 books with enhanced search and discovery
-- **External Library API**: Additional curated content
-
-Total: **90+ books** from 5 integrated sources with parallel API fetching, intelligent caching, and comprehensive search across all sources.
+AccessiBooks is an audiobook player application focused on accessibility. It offers a library management system to browse audiobooks from multiple sources and an audio player with advanced controls, bookmarking, and accessibility features like high contrast mode, dyslexia-friendly fonts, and keyboard navigation. The platform aggregates content from various external APIs to provide access to a wide range of audiobooks and ebooks. The project aims to provide an inclusive and rich audiobook experience, with market potential in the growing audiobook consumption demographic, especially among users requiring enhanced accessibility.
 
 ## User Preferences
 
@@ -20,242 +11,70 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React with TypeScript for type safety and component-based architecture
-- **Styling**: Tailwind CSS with shadcn/ui component library for consistent, accessible UI components
-- **State Management**: React hooks for local state, TanStack Query for server state management and caching
-- **Build Tool**: Vite for fast development and optimized production builds
+- **Framework**: React with TypeScript.
+- **Styling**: Tailwind CSS with shadcn/ui.
+- **State Management**: React hooks for local state, TanStack Query for server state and caching.
+- **Build Tool**: Vite.
 
 ### Backend Architecture
-- **Runtime**: Node.js with Express.js for RESTful API endpoints
-- **Language**: TypeScript with ES modules for modern JavaScript features
-- **API Design**: RESTful endpoints for book management including search, retrieval, and audio streaming
-- **Middleware**: Express middleware for CORS, JSON parsing, and request logging
+- **Runtime**: Node.js with Express.js.
+- **Language**: TypeScript with ES modules.
+- **API Design**: RESTful endpoints for book management and audio streaming.
+- **Middleware**: Express middleware for CORS, JSON parsing, and request logging.
 
 ### Data Storage Solutions
-- **Database**: PostgreSQL with Drizzle ORM for type-safe database operations
-- **Schema**: Books table with comprehensive metadata (title, author, narrator, duration, cover images)
-- **Local Storage**: Browser localStorage for user preferences, bookmarks, and playback progress
-- **In-Memory Storage**: Fallback storage implementation with sample data for development
+- **Database**: PostgreSQL with Drizzle ORM for type-safe operations.
+- **Schema**: `Books` table for metadata.
+- **Local Storage**: Browser localStorage for user preferences, bookmarks, and playback progress.
+- **In-Memory Storage**: Fallback with sample data for development.
 
 ### Authentication and Authorization
-- **System**: Passport.js with multiple OAuth providers
-- **Providers**: 
-  - Google OAuth 2.0 (passport-google-oauth20)
-  - Facebook OAuth (passport-facebook)
-  - Microsoft OAuth (passport-microsoft)
-  - Local email/password authentication (passport-local with bcrypt)
-- **Session Management**: PostgreSQL-backed sessions via connect-pg-simple
-  - 30-day session duration (extended for uninterrupted playback)
-  - Rolling session expiry (resets on each request for active users)
-- **User Storage**: PostgreSQL database with Drizzle ORM
-- **Security**: sameSite cookies, httpOnly, secure in production, bcrypt password hashing
-- **Client Integration**: useAuth React hook with TanStack Query auto-refresh, landing page for logged-out users
-- **Required Environment Variables**:
-  - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (for Google OAuth)
-  - FACEBOOK_APP_ID, FACEBOOK_APP_SECRET (for Facebook OAuth)
-  - MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET (for Microsoft OAuth)
-  - AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET (for Auth0 M2M authentication)
+- **System**: Passport.js supporting Google, Facebook, Microsoft OAuth, and local email/password.
+- **Session Management**: PostgreSQL-backed sessions (30-day duration, rolling expiry).
+- **Security**: sameSite cookies, httpOnly, secure in production, bcrypt password hashing.
 
 ### Accessibility Features
-- **Visual Accessibility**: High contrast mode, dyslexia-friendly font options, dark mode support
-- **Keyboard Navigation**: Comprehensive keyboard shortcuts for all player functions (spacebar for play/pause, arrow keys for seeking)
-- **Screen Reader Support**: Semantic HTML, ARIA labels, and proper focus management
-- **Responsive Design**: Mobile-friendly interface with touch-optimized controls
+- **Visual**: High contrast mode, dyslexia-friendly fonts, dark mode.
+- **Navigation**: Comprehensive keyboard shortcuts and screen reader support (semantic HTML, ARIA labels).
+- **Responsiveness**: Mobile-friendly interface.
 
 ### Audio Player System
-- **Playback Engine**: HTML5 audio with custom React hooks for state management
-- **Features**: Variable speed playback, skip forward/backward, progress tracking, bookmark system
-- **Progress Persistence**: Automatic saving of playback position every 5 seconds (local storage + database for logged-in users)
-- **Bookmark Management**: User-created bookmarks with custom names and timestamp navigation
-- **Sleep Timer**: Configurable sleep timer (5, 15, 30, 45, 60 minutes) with countdown display
-- **Chapter Navigation**: LibriVox books display chapter list with direct chapter selection
+- **Engine**: HTML5 audio with custom React hooks.
+- **Features**: Variable speed, skip, progress tracking, bookmarking, sleep timer, chapter navigation.
+- **Persistence**: Automatic playback position saving (local storage + database).
 
 ### Personalization Features
-- **Continue Listening**: Shows in-progress books at top of library
-- **For You Section**: Personalized recommendations based on listening history and genres
-- **Genre Browsing**: Visual genre cards with accessible color schemes for filtering
-- **Listening History**: Database-tracked history synced every 10 seconds for logged-in users
+- "Continue Listening" section for in-progress books.
+- "For You" recommendations based on listening history.
+- Genre browsing and listening history tracking.
+
+### Monetization System
+- **Subscription Tiers**: Free (ad-supported) and Premium (ad-free, unlimited features).
+- **DRM and Content Protection**: Auth-gated streaming, signed URLs (15 min), rate limiting, premium content gating, session enforcement.
+- **Spotify-like Controls**: Skip limits, audio quality tiers, shuffle mode limitations, device limits, session-based playback, interstitial ads for free users.
+- **Advertising**: Integration with Google AdSense and Google Ad Manager for ad placements, with automatic exclusion for premium users.
 
 ## External Dependencies
 
-### Core Framework Dependencies
-- **@neondatabase/serverless**: Neon Database serverless driver for PostgreSQL connections
-- **drizzle-orm**: Type-safe ORM for database operations with PostgreSQL dialect
-- **@tanstack/react-query**: Data fetching and caching library for API state management
-
-### UI and Styling
-- **@radix-ui/react-***: Comprehensive set of unstyled, accessible UI primitives
-- **tailwindcss**: Utility-first CSS framework for styling
-- **class-variance-authority**: Utility for creating type-safe component variants
-
-### Development and Build Tools
-- **vite**: Fast build tool and development server
-- **typescript**: Type checking and compilation
-- **esbuild**: Fast JavaScript bundler for production builds
-
-### Audio and Media
-- **HTML5 Audio API**: Native browser audio playback capabilities
-- **Web Audio API**: For advanced audio processing features (available for future enhancements)
-
-### Validation and Forms
-- **zod**: Schema validation library for runtime type checking
-- **@hookform/resolvers**: Form validation integration with React Hook Form
-- **drizzle-zod**: Integration between Drizzle ORM and Zod for schema validation
-
-## Multi-Source Content Integration
-
-### LibriVox API Integration
-- **Purpose**: Free public domain audiobooks
-- **Endpoint**: https://librivox.org/api/feed/audiobooks
-- **Content**: 30+ audiobooks including classics like "Count of Monte Cristo"
-- **Features**: 
-  - Full audiobook streaming with MP3 sections
-  - Narrator information and descriptions
-  - Genre and language metadata
-  - Parallel search across title and author
-- **Status**: ✅ Production-ready with security validation and caching
-
-### Open Library API Integration
-- **Purpose**: Comprehensive book metadata and professional covers
-- **Endpoint**: https://openlibrary.org
-- **Content**: 20 books with rich metadata
-- **Features**:
-  - High-quality cover images from covers.openlibrary.org
-  - Subject/genre classification
-  - Publication year and language metadata
-  - ISBN and author information
-- **Status**: ✅ Production-ready with HTTPS validation
-
-### Google Books API Integration
-- **Purpose**: Enhanced search and discovery with millions of books
-- **Endpoint**: https://www.googleapis.com/books/v1
-- **Content**: 20 books with detailed descriptions
-- **Features**:
-  - Full book descriptions (unlike Open Library basic search)
-  - Categories and ratings metadata
-  - Professional cover images
-  - ISBN extraction and year parsing
-- **API Key**: Required (stored in environment variable GOOGLE_BOOKS_API_KEY)
-- **Status**: ✅ Production-ready with secure key management
-
-### Content Aggregation Architecture
-- **Parallel API Fetching**: All sources queried simultaneously using Promise.all()
-- **Response Time**: ~6-10 seconds initial load, <5ms with caching
-- **Caching Strategy**: 5-minute TTL in-memory cache for all aggregated results
-- **Deduplication**: Title + Author matching to prevent duplicate books
-- **Error Handling**: Graceful fallbacks if individual APIs fail
-- **Security**: 
-  - Domain whitelist for audio/image URLs (librivox.org, archive.org CDN pattern, covers.openlibrary.org, books.google.com)
-  - SSRF protection via URL validation before redirects
-  - Dynamic Internet Archive CDN pattern matching (/^ia\d+\.us\.archive\.org$/)
-
-## Monetization System
-
-### Subscription Tiers
-- **Free Tier**: Ad-supported experience with full library access
-- **Premium Tier ($9.99/month)**: Ad-free listening, unlimited bookmarks, priority support
-
-### Stripe Integration
-- **API Version**: 2025-12-15.clover (latest)
-- **Checkout**: Stripe Checkout for secure payment processing
-- **Subscription Management**: Cancel at period end, automatic renewal
-- **Webhook Events**: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.payment_succeeded
-- **Security**: Webhook signature verification required in production
-- **Environment Variables**: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
-
-### PayPal Integration
-- **SDK**: @paypal/paypal-server-sdk (PayPal Web SDK v6)
-- **Purpose**: Alternative payment method for subscriptions and donations
-- **Flow**: Client-side PayPal button → Server order creation → Capture on approval
-- **Endpoints**: /paypal/setup (client token), /paypal/order (create), /paypal/order/:id/capture
-- **Environment Variables**: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
-- **Status**: Graceful degradation when credentials not configured
-
-### Coinbase Commerce Integration (Cryptocurrency)
-- **Purpose**: Accept Bitcoin, Ethereum, USDC, and other cryptocurrencies
-- **API**: Coinbase Commerce REST API
-- **Supported Currencies**: BTC, ETH, USDC, DAI, LTC (auto-converts to USDC)
-- **Features**: 1% transaction fee, instant settlement, no chargebacks
-- **Endpoints**: /api/crypto/charge (create), /api/crypto/charge/:id (status), /api/crypto/webhook
-- **Webhook Events**: charge:confirmed, charge:failed, charge:pending
-- **Security**: Webhook signature verification with HMAC-SHA256, length check before timing-safe comparison, raw body preservation via express.text() middleware
-- **Environment Variables**: COINBASE_COMMERCE_API_KEY, COINBASE_COMMERCE_WEBHOOK_SECRET
-- **Status**: Graceful degradation when API key not configured
-
-### Payment Method Discovery
-- **Endpoint**: GET /api/payment-methods
-- **Returns**: Available payment methods (stripe, paypal, coinbase) and supported cryptos
-- **Purpose**: Frontend dynamically shows available payment options
-
-### Advertising System
-- **Ad Banner**: Displayed in library view for free users
-- **Premium Upgrade Prompts**: Inline upgrade CTAs with feature highlights
-- **Ad-Free Experience**: Premium users see no ads
-
-### User Schema Extensions
-- `subscriptionTier`: "free" or "premium"
-- `stripeCustomerId`: Stripe customer reference
-- `stripeSubscriptionId`: Active subscription reference
-- `subscriptionEndDate`: Subscription expiration date
-
-### Donation System
-- **One-time payments**: Support voluntary donations via Stripe Checkout
-- **Suggested amounts**: $5, $10, $25, $50 or custom amount
-- **Anonymous support**: Donations work for both logged-in and guest users
-- **DonationCard component**: UI for selecting and processing donations
-
-### Frontend Components
-- **AdBanner**: Conditional display based on subscription status
-- **SubscriptionCard**: Full subscription management UI with multi-payment support
-- **PremiumBadge**: Visual indicator for premium status
-- **DonationCard**: Donation form with amount selection and multi-payment support
-- **PaymentHub**: Unified payment component with Stripe/PayPal/Crypto tabs
-- **PayPalButton**: PayPal Web SDK v6 checkout button
-- **useSubscription hook**: React hook for subscription state management
-
-## DRM and Content Protection
-
-### Security Architecture
-- **Auth-Gated Streaming**: Audio streams require authentication
-- **Signed URLs**: Time-limited (15 min) HMAC-signed streaming URLs
-- **Rate Limiting**: 30 requests per minute per user to prevent bulk downloading
-- **Premium Content Gating**: Books with "premium-" prefix require active subscription
-
-### DRM Implementation
-- **server/drm.ts**: Core DRM middleware module
-- **Signature Verification**: HMAC-SHA256 with timing-safe comparison
-- **URL Expiration**: Automatic expiration after 15 minutes
-- **Environment Variable**: DRM_SIGNING_SECRET (required for production)
-
-### Rate Limiting
-- **Window**: 60 seconds
-- **Limit**: 30 requests per user
-- **Headers**: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
-- **Cleanup**: Automatic entry expiration
-
-## Google Advertising Integration
-
-### Supported Platforms
-- **Google AdSense**: Simple ad integration for publishers
-- **Google Ad Manager (DFP)**: Advanced ad serving with GPT tags
-
-### Environment Variables
-- `VITE_ADSENSE_CLIENT`: AdSense publisher ID (e.g., ca-pub-XXXXXXXX)
-- `VITE_ADSENSE_SLOT_LIBRARY_TOP`: Ad slot ID for library top banner
-- `VITE_ADSENSE_SLOT_LIBRARY_INLINE`: Ad slot ID for in-content ads
-- `VITE_ADSENSE_SLOT_PLAYER_SIDEBAR`: Ad slot ID for player sidebar
-- `VITE_DFP_NETWORK_CODE`: Google Ad Manager network code (alternative to AdSense)
-
-### Ad Placements
-- **Library Top**: Responsive banner (728x90 desktop, 320x50 mobile)
-- **Library Inline**: In-content rectangle (336x280, 300x250)
-- **Player Sidebar**: Medium rectangle (300x250)
-
-### Premium User Exclusion
-- All ads are automatically hidden for premium subscribers
-- Uses useSubscription hook to check subscription status
-
-### Components
-- **GoogleAd**: Base component for rendering GPT or AdSense ads
-- **ResponsiveAd**: Pre-configured responsive ad component
-- **AdBanner**: Falls back to upgrade prompts when no ad config present
+- **Database**:
+    - `@neondatabase/serverless`: Neon Database serverless driver.
+    - `drizzle-orm`: Type-safe ORM for PostgreSQL.
+- **Data Fetching & Caching**:
+    - `@tanstack/react-query`: For server state management.
+- **UI & Styling**:
+    - `@radix-ui/react-*`: Accessible UI primitives.
+    - `tailwindcss`: Utility-first CSS framework.
+- **Validation**:
+    - `zod`: Schema validation.
+- **Payment Gateways**:
+    - **Stripe**: For subscription management and one-time donations.
+    - **PayPal**: Alternative payment method for subscriptions and donations.
+    - **Coinbase Commerce**: For cryptocurrency payments (Bitcoin, Ethereum, USDC, etc.).
+- **Content APIs**:
+    - **iTunes Search API**: Commercial audiobooks.
+    - **LibriVox API**: Free public domain audiobooks.
+    - **Open Library API**: Comprehensive book metadata.
+    - **Google Books API**: Enhanced search and discovery.
+- **Advertising Platforms**:
+    - **Google AdSense**: Simple ad integration.
+    - **Google Ad Manager (DFP)**: Advanced ad serving.

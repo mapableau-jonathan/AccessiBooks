@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Book } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { useBookmarks } from "@/hooks/use-bookmarks";
+import { useMonetization } from "@/hooks/use-monetization";
 import { BookmarkList } from "./bookmark-list";
 import { SleepTimer } from "./sleep-timer";
 import { ChapterList } from "./chapter-list";
@@ -26,7 +27,9 @@ import {
   Gauge,
   Car,
   ListMusic,
-  ChevronDown
+  ChevronDown,
+  Crown,
+  SkipForward
 } from "lucide-react";
 
 interface AudioPlayerProps {
@@ -64,12 +67,64 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
   });
 
   const { bookmarks, addBookmark, removeBookmark } = useBookmarks(book.id);
+  const { 
+    skipStatus, 
+    audioQuality, 
+    useSkip: consumeSkip, 
+    isUsingSkip,
+    startSession,
+    endSession,
+    isPremium,
+  } = useMonetization();
+  
   const [bookmarkName, setBookmarkName] = useState("");
   const [showBookmarkInput, setShowBookmarkInput] = useState(false);
   const [currentChapterId, setCurrentChapterId] = useState<string | undefined>();
   const [carMode, setCarMode] = useState(false);
   const [showChapters, setShowChapters] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    startSession(book.id);
+    return () => {
+      endSession();
+    };
+  }, [book.id]);
+
+  const handleSkipForward = async () => {
+    if (!isPremium && skipStatus && !skipStatus.unlimited) {
+      if (skipStatus.remaining <= 0) {
+        toast({
+          title: "Skip limit reached",
+          description: `Upgrade to Premium for unlimited skips. Resets in ${Math.ceil(skipStatus.resetIn / 60)} minutes.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        const response = await fetch("/api/monetization/use-skip", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          toast({
+            title: "Skip limit reached",
+            description: error.message || "Upgrade to Premium for unlimited skips.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (error) {
+        return;
+      }
+    }
+    skip(30);
+  };
+
+  const handleSkipBackward = () => {
+    skip(-30);
+  };
 
   const handleChapterSelect = (chapter: { id: string; title: string; audioUrl: string }) => {
     setCurrentChapterId(chapter.id);
@@ -152,7 +207,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
           <Button
             size="lg"
             variant="secondary"
-            onClick={() => skip(-30)}
+            onClick={handleSkipBackward}
             className="h-20 w-20 rounded-full text-xl"
             aria-label="Rewind 30 seconds"
           >
@@ -181,9 +236,10 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
           <Button
             size="lg"
             variant="secondary"
-            onClick={() => skip(30)}
+            onClick={handleSkipForward}
             className="h-20 w-20 rounded-full text-xl"
             aria-label="Forward 30 seconds"
+            disabled={isUsingSkip}
           >
             <div className="flex flex-col items-center">
               <RotateCw className="h-8 w-8" />
@@ -195,6 +251,13 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
         <div className="mt-8 text-2xl font-medium">
           {playbackRate}x Speed
         </div>
+        
+        {!isPremium && skipStatus && !skipStatus.unlimited && (
+          <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+            <SkipForward className="h-4 w-4" />
+            <span>{skipStatus.remaining}/{skipStatus.total} skips remaining</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -267,7 +330,7 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
             <Button
               size="lg"
               variant="ghost"
-              onClick={() => skip(-30)}
+              onClick={handleSkipBackward}
               className="h-14 w-14 rounded-full relative"
               aria-label="Rewind 30 seconds"
               data-testid="button-skip-backward"
@@ -296,13 +359,19 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
             <Button
               size="lg"
               variant="ghost"
-              onClick={() => skip(30)}
+              onClick={handleSkipForward}
               className="h-14 w-14 rounded-full relative"
               aria-label="Forward 30 seconds"
               data-testid="button-skip-forward"
+              disabled={isUsingSkip}
             >
               <RotateCw className="h-6 w-6" aria-hidden="true" />
               <span className="absolute -bottom-1 text-[10px] font-medium">30</span>
+              {!isPremium && skipStatus && !skipStatus.unlimited && skipStatus.remaining < 3 && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center">
+                  {skipStatus.remaining}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -394,6 +463,40 @@ export function AudioPlayer({ book }: AudioPlayerProps) {
           </div>
         </CardContent>
       </Card>
+
+      {!isPremium && (skipStatus || audioQuality) && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="p-3 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-4 text-sm">
+              {skipStatus && !skipStatus.unlimited && (
+                <div className="flex items-center gap-2">
+                  <SkipForward className="h-4 w-4 text-amber-600" />
+                  <span className="text-amber-700 dark:text-amber-300">
+                    {skipStatus.remaining}/{skipStatus.total} skips
+                  </span>
+                </div>
+              )}
+              {audioQuality && (
+                <div className="flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-amber-600" />
+                  <span className="text-amber-700 dark:text-amber-300">
+                    {audioQuality.bitrate}kbps audio
+                  </span>
+                </div>
+              )}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-amber-700 hover:text-amber-800 dark:text-amber-300"
+              onClick={() => window.location.href = "/api/subscription/create-checkout"}
+            >
+              <Crown className="h-4 w-4 mr-1" />
+              Upgrade
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div
         className="sr-only"
