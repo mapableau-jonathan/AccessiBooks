@@ -568,9 +568,47 @@ function LandingPage() {
       </section>
       
       {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>AccessiBooks - Making audiobooks accessible to everyone</p>
+      <footer className="border-t py-12 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center space-y-6">
+            {/* Australian Disability Ltd Branding */}
+            <div className="flex flex-col items-center space-y-3">
+              <a 
+                href="https://ausdis.au" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block hover:opacity-80 transition-opacity"
+                aria-label="Visit Australian Disability Ltd website"
+              >
+                <img 
+                  src="/assets/ausdis-logo.jpg" 
+                  alt="Australian Disability Ltd - We're for a Fair, Dignified and Equal Society for All People with Disabilities" 
+                  className="h-20 w-auto"
+                />
+              </a>
+              <p className="text-sm text-muted-foreground text-center max-w-md">
+                A project by{" "}
+                <a 
+                  href="https://ausdis.au" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  Australian Disability Ltd
+                </a>
+              </p>
+            </div>
+            
+            <div className="border-t w-full max-w-xs" />
+            
+            <p className="text-sm text-muted-foreground">
+              AccessiBooks - Making audiobooks accessible to everyone
+            </p>
+            
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Australian Disability Ltd. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
       
