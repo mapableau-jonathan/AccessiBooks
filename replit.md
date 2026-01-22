@@ -196,3 +196,30 @@ Preferred communication style: Simple, everyday language.
 - **Limit**: 30 requests per user
 - **Headers**: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
 - **Cleanup**: Automatic entry expiration
+
+## Google Advertising Integration
+
+### Supported Platforms
+- **Google AdSense**: Simple ad integration for publishers
+- **Google Ad Manager (DFP)**: Advanced ad serving with GPT tags
+
+### Environment Variables
+- `VITE_ADSENSE_CLIENT`: AdSense publisher ID (e.g., ca-pub-XXXXXXXX)
+- `VITE_ADSENSE_SLOT_LIBRARY_TOP`: Ad slot ID for library top banner
+- `VITE_ADSENSE_SLOT_LIBRARY_INLINE`: Ad slot ID for in-content ads
+- `VITE_ADSENSE_SLOT_PLAYER_SIDEBAR`: Ad slot ID for player sidebar
+- `VITE_DFP_NETWORK_CODE`: Google Ad Manager network code (alternative to AdSense)
+
+### Ad Placements
+- **Library Top**: Responsive banner (728x90 desktop, 320x50 mobile)
+- **Library Inline**: In-content rectangle (336x280, 300x250)
+- **Player Sidebar**: Medium rectangle (300x250)
+
+### Premium User Exclusion
+- All ads are automatically hidden for premium subscribers
+- Uses useSubscription hook to check subscription status
+
+### Components
+- **GoogleAd**: Base component for rendering GPT or AdSense ads
+- **ResponsiveAd**: Pre-configured responsive ad component
+- **AdBanner**: Falls back to upgrade prompts when no ad config present

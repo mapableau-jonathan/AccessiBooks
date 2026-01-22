@@ -1,17 +1,32 @@
 import { X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/use-subscription";
+import { ResponsiveAd } from "./google-ad";
 
 interface AdBannerProps {
   variant?: "library" | "player" | "inline";
   onClose?: () => void;
+  useGoogleAds?: boolean;
 }
 
-export function AdBanner({ variant = "library", onClose }: AdBannerProps) {
+export function AdBanner({ variant = "library", onClose, useGoogleAds = true }: AdBannerProps) {
   const { isPremium, upgradeToPremium, isUpgrading } = useSubscription();
 
   if (isPremium) {
     return null;
+  }
+
+  const hasGoogleAdsConfig = !!(
+    import.meta.env.VITE_ADSENSE_CLIENT || 
+    import.meta.env.VITE_DFP_NETWORK_CODE
+  );
+
+  if (useGoogleAds && hasGoogleAdsConfig && variant === "library") {
+    return (
+      <div className="mb-6">
+        <ResponsiveAd position="library-top" className="mx-auto" />
+      </div>
+    );
   }
 
   if (variant === "inline") {
