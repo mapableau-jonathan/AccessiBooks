@@ -8,6 +8,18 @@ export interface AccessibilitySettings {
   highContrast: boolean;
   dyslexiaFont: boolean;
   darkMode: boolean;
+  fontSize: number;
+  letterSpacing: number;
+  lineHeight: number;
+  saturation: number;
+  invertColors: boolean;
+  highlightLinks: boolean;
+  highlightFocus: boolean;
+  readingGuide: boolean;
+  pauseAnimations: boolean;
+  largerCursor: boolean;
+  readingMask: boolean;
+  activeProfile: string | null;
 }
 
 export const localStorageService = {
@@ -82,15 +94,31 @@ export const localStorageService = {
 
   // Settings
   getSettings(): AccessibilitySettings {
+    const defaultSettings: AccessibilitySettings = {
+      highContrast: false,
+      dyslexiaFont: false,
+      darkMode: false,
+      fontSize: 100,
+      letterSpacing: 0,
+      lineHeight: 100,
+      saturation: 100,
+      invertColors: false,
+      highlightLinks: false,
+      highlightFocus: false,
+      readingGuide: false,
+      pauseAnimations: false,
+      largerCursor: false,
+      readingMask: false,
+      activeProfile: null,
+    };
     try {
       const stored = localStorage.getItem(SETTINGS_KEY);
       if (!stored) {
-        return { highContrast: false, dyslexiaFont: false, darkMode: false };
+        return defaultSettings;
       }
-      
-      return JSON.parse(stored);
+      return { ...defaultSettings, ...JSON.parse(stored) };
     } catch {
-      return { highContrast: false, dyslexiaFont: false, darkMode: false };
+      return defaultSettings;
     }
   },
 
