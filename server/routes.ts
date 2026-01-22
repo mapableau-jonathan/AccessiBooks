@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { setupMultiAuth, isAuthenticated } from "./multiAuth";
+import { setupAuth0Routes, isAuth0Configured } from "./auth0";
 import { getUncachableSpotifyClient, isSpotifyConnected } from "./spotifyClient";
 import { stripe, PREMIUM_PRICE_MONTHLY, SUBSCRIPTION_CONFIG, DONATION_CONFIG, DONATION_AMOUNTS, verifyWebhookSignature } from "./stripe";
 import { rateLimitMiddleware, drmGuardMiddleware, premiumContentMiddleware, generateSignedStreamUrl } from "./drm";
@@ -36,6 +37,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup multi-provider authentication: local, Google, Facebook, Microsoft (Passport.js)
   setupMultiAuth(app);
+  
+  // Setup Auth0 M2M API routes
+  setupAuth0Routes(app);
 
   // Auth user endpoint (Passport.js authentication)
   app.get('/api/auth/user', async (req: any, res) => {
