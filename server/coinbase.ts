@@ -155,7 +155,8 @@ export function verifyCoinbaseWebhook(
 export async function handleCoinbaseWebhook(req: Request, res: Response) {
   try {
     const signature = req.headers["x-cc-webhook-signature"] as string;
-    const rawBody = JSON.stringify(req.body);
+    // Use raw body if available (set by express.text middleware), otherwise stringify
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
 
     if (COINBASE_COMMERCE_WEBHOOK_SECRET && !verifyCoinbaseWebhook(rawBody, signature)) {
       console.warn("Invalid Coinbase webhook signature");

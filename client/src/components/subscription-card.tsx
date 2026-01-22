@@ -1,8 +1,14 @@
-import { Crown, Check, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Crown, Check, Loader2, CreditCard, Bitcoin } from "lucide-react";
+import { SiPaypal } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import PayPalButton from "./PayPalButton";
 
 const PREMIUM_FEATURES = [
   "Ad-free listening experience",
@@ -13,7 +19,18 @@ const PREMIUM_FEATURES = [
   "Enhanced playback controls",
 ];
 
+interface PaymentMethods {
+  stripe: boolean;
+  paypal: boolean;
+  coinbase: boolean;
+  supportedCryptos: string[];
+}
+
 export function SubscriptionCard() {
+  const { toast } = useToast();
+  const [paymentMethod, setPaymentMethod] = useState<"stripe" | "paypal" | "crypto">("stripe");
+  const [isCryptoProcessing, setIsCryptoProcessing] = useState(false);
+  
   const { 
     isPremium, 
     tier, 
@@ -23,6 +40,63 @@ export function SubscriptionCard() {
     isCancelling,
     subscription
   } = useSubscription();
+
+  const { data: paymentMethods } = useQuery<PaymentMethods>({
+    queryKey: ["/api/payment-methods"],
+  });
+
+  const handleCryptoPayment = async () => {
+    setIsCryptoProcessing(true);
+    try {
+      const response = await fetch("/api/crypto/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          amount: "9.99",
+          currency: "USD",
+          name: "AccessiBooks Premium",
+          description: "Monthly premium subscription",
+          type: "subscription",
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.hosted_url) {
+        window.open(data.hosted_url, "_blank");
+        toast({
+          title: "Crypto Payment Started",
+          description: "Complete your payment in the Coinbase Commerce window.",
+        });
+      } else {
+        throw new Error(data.error || "Failed to create crypto charge");
+      }
+    } catch (error) {
+      console.error("Crypto payment error:", error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to initiate crypto payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCryptoProcessing(false);
+    }
+  };
+
+  const handlePayPalSuccess = () => {
+    toast({
+      title: "Payment Successful",
+      description: "Welcome to AccessiBooks Premium!",
+    });
+    window.location.reload();
+  };
+
+  const hasMultipleMethods = [
+    paymentMethods?.stripe,
+    paymentMethods?.paypal,
+    paymentMethods?.coinbase,
+  ].filter(Boolean).length > 1;
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -93,6 +167,86 @@ export function SubscriptionCard() {
               )}
             </Button>
           </div>
+        ) : hasMultipleMethods ? (
+          <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              {paymentMethods?.stripe && (
+                <TabsTrigger value="stripe" className="flex items-center gap-1 text-xs">
+                  <CreditCard className="h-3 w-3" />
+                  Card
+                </TabsTrigger>
+              )}
+              {paymentMethods?.paypal && (
+                <TabsTrigger value="paypal" className="flex items-center gap-1 text-xs">
+                  <SiPaypal className="h-3 w-3" />
+                  PayPal
+                </TabsTrigger>
+              )}
+              {paymentMethods?.coinbase && (
+                <TabsTrigger value="crypto" className="flex items-center gap-1 text-xs">
+                  <Bitcoin className="h-3 w-3" />
+                  Crypto
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="stripe">
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => upgradeToPremium()}
+                disabled={isUpgrading}
+              >
+                {isUpgrading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading checkout...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay $9.99 with Card
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="paypal">
+              <div className="paypal-button-container">
+                <PayPalButton
+                  amount="9.99"
+                  currency="USD"
+                  intent="CAPTURE"
+                  onSuccess={handlePayPalSuccess}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="crypto" className="space-y-3">
+              <p className="text-xs text-muted-foreground text-center">
+                Pay with Bitcoin, Ethereum, USDC & more
+              </p>
+              <Button
+                className="w-full"
+                size="lg"
+                variant="outline"
+                onClick={handleCryptoPayment}
+                disabled={isCryptoProcessing}
+              >
+                {isCryptoProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating payment...
+                  </>
+                ) : (
+                  <>
+                    <Bitcoin className="h-4 w-4 mr-2" />
+                    Pay $9.99 with Crypto
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
         ) : (
           <Button
             className="w-full"

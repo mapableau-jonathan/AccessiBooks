@@ -163,6 +163,29 @@ Preferred communication style: Simple, everyday language.
 - **Security**: Webhook signature verification required in production
 - **Environment Variables**: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
 
+### PayPal Integration
+- **SDK**: @paypal/paypal-server-sdk (PayPal Web SDK v6)
+- **Purpose**: Alternative payment method for subscriptions and donations
+- **Flow**: Client-side PayPal button → Server order creation → Capture on approval
+- **Endpoints**: /paypal/setup (client token), /paypal/order (create), /paypal/order/:id/capture
+- **Environment Variables**: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
+- **Status**: Graceful degradation when credentials not configured
+
+### Coinbase Commerce Integration (Cryptocurrency)
+- **Purpose**: Accept Bitcoin, Ethereum, USDC, and other cryptocurrencies
+- **API**: Coinbase Commerce REST API
+- **Supported Currencies**: BTC, ETH, USDC, DAI, LTC (auto-converts to USDC)
+- **Features**: 1% transaction fee, instant settlement, no chargebacks
+- **Endpoints**: /api/crypto/charge (create), /api/crypto/charge/:id (status), /api/crypto/webhook
+- **Webhook Events**: charge:confirmed, charge:failed, charge:pending
+- **Environment Variables**: COINBASE_COMMERCE_API_KEY, COINBASE_COMMERCE_WEBHOOK_SECRET
+- **Status**: Graceful degradation when API key not configured
+
+### Payment Method Discovery
+- **Endpoint**: GET /api/payment-methods
+- **Returns**: Available payment methods (stripe, paypal, coinbase) and supported cryptos
+- **Purpose**: Frontend dynamically shows available payment options
+
 ### Advertising System
 - **Ad Banner**: Displayed in library view for free users
 - **Premium Upgrade Prompts**: Inline upgrade CTAs with feature highlights
@@ -182,9 +205,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Components
 - **AdBanner**: Conditional display based on subscription status
-- **SubscriptionCard**: Full subscription management UI
+- **SubscriptionCard**: Full subscription management UI with multi-payment support
 - **PremiumBadge**: Visual indicator for premium status
-- **DonationCard**: Donation form with amount selection
+- **DonationCard**: Donation form with amount selection and multi-payment support
+- **PaymentHub**: Unified payment component with Stripe/PayPal/Crypto tabs
+- **PayPalButton**: PayPal Web SDK v6 checkout button
 - **useSubscription hook**: React hook for subscription state management
 
 ## DRM and Content Protection
