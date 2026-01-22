@@ -277,7 +277,7 @@ export function setupMultiAuth(app: Express) {
     );
   }
 
-  // Get available auth providers
+  // Get available auth providers (Passport.js only - Replit Auth removed)
   app.get("/api/auth/providers", (req, res) => {
     res.json({
       local: true, // Always available
@@ -285,7 +285,6 @@ export function setupMultiAuth(app: Express) {
       facebook: !!process.env.FACEBOOK_APP_ID, // Via Passport
       microsoft: !!process.env.MICROSOFT_CLIENT_ID, // Via Passport
       auth0: !!process.env.AUTH0_DOMAIN,
-      replit: true, // Via Replit Auth (Google, GitHub, Apple, X)
     });
   });
 
@@ -316,3 +315,5 @@ export const isLocalAuthenticated = (req: Request, res: Response, next: NextFunc
   }
   res.status(401).json({ message: "Unauthorized" });
 };
+
+export const isAuthenticated = isLocalAuthenticated;

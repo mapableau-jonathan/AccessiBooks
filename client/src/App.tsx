@@ -93,14 +93,13 @@ function AppHeader() {
   );
 }
 
-// Auth providers available
+// Auth providers available (Passport.js)
 interface AuthProviders {
   local: boolean;
   google: boolean;
   facebook: boolean;
   microsoft: boolean;
   auth0: boolean;
-  replit: boolean;
 }
 
 // Landing page for logged-out users
@@ -390,21 +389,6 @@ function LandingPage() {
                     </Button>
                   )}
                   
-                  {/* Replit Auth (GitHub, Apple, X) */}
-                  {providers?.replit && (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => window.location.href = "/api/login"}
-                      data-testid="button-replit-auth"
-                    >
-                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
-                      </svg>
-                      More Options
-                    </Button>
-                  )}
-                  
                   {/* Auth0 */}
                   {providers?.auth0 && (
                     <Button
@@ -421,9 +405,9 @@ function LandingPage() {
                   )}
                 </div>
                 
-                {/* Info about additional options */}
+                {/* Info about login options */}
                 <p className="text-xs text-center text-muted-foreground">
-                  "More Options" provides GitHub, Apple, and X (Twitter) login
+                  Sign in with your preferred method above
                 </p>
               </CardContent>
             </Card>
