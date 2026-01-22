@@ -201,6 +201,24 @@ export function setupMultiAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
   
+  // Serialize user to session (store user ID as string)
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+  
+  // Deserialize user from session (retrieve full user by string ID)
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id));
+      done(null, user || null);
+    } catch (error) {
+      done(error);
+    }
+  });
+  
   // Main logout endpoint
   app.get("/api/logout", (req, res) => {
     req.logout((err) => {
