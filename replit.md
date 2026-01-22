@@ -178,6 +178,7 @@ Preferred communication style: Simple, everyday language.
 - **Features**: 1% transaction fee, instant settlement, no chargebacks
 - **Endpoints**: /api/crypto/charge (create), /api/crypto/charge/:id (status), /api/crypto/webhook
 - **Webhook Events**: charge:confirmed, charge:failed, charge:pending
+- **Security**: Webhook signature verification with HMAC-SHA256, length check before timing-safe comparison, raw body preservation via express.text() middleware
 - **Environment Variables**: COINBASE_COMMERCE_API_KEY, COINBASE_COMMERCE_WEBHOOK_SECRET
 - **Status**: Graceful degradation when API key not configured
 
