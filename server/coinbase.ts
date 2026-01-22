@@ -134,10 +134,15 @@ export async function getCoinbaseCharge(req: Request, res: Response) {
 
 export function verifyCoinbaseWebhook(
   rawBody: string,
-  signature: string
+  signature: string | undefined
 ): boolean {
   if (!COINBASE_COMMERCE_WEBHOOK_SECRET) {
     console.warn("Coinbase webhook secret not configured");
+    return false;
+  }
+
+  if (!signature || typeof signature !== "string") {
+    console.warn("Missing or invalid Coinbase webhook signature header");
     return false;
   }
 
@@ -146,21 +151,28 @@ export function verifyCoinbaseWebhook(
     .update(rawBody)
     .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(computedSignature)
-  );
+  const sigBuffer = Buffer.from(signature);
+  const computedBuffer = Buffer.from(computedSignature);
+
+  if (sigBuffer.length !== computedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(sigBuffer, computedBuffer);
 }
 
 export async function handleCoinbaseWebhook(req: Request, res: Response) {
   try {
-    const signature = req.headers["x-cc-webhook-signature"] as string;
+    const signature = req.headers["x-cc-webhook-signature"] as string | undefined;
     // Use raw body if available (set by express.text middleware), otherwise stringify
     const rawBody = (req as any).rawBody || JSON.stringify(req.body);
 
-    if (COINBASE_COMMERCE_WEBHOOK_SECRET && !verifyCoinbaseWebhook(rawBody, signature)) {
-      console.warn("Invalid Coinbase webhook signature");
-      return res.status(400).json({ error: "Invalid signature" });
+    // Require signature verification in production or when secret is configured
+    if (COINBASE_COMMERCE_WEBHOOK_SECRET) {
+      if (!verifyCoinbaseWebhook(rawBody, signature)) {
+        console.warn("Invalid Coinbase webhook signature");
+        return res.status(400).json({ error: "Invalid signature" });
+      }
     }
 
     const event = req.body;
