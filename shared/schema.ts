@@ -42,12 +42,10 @@ export const sessions = pgTable(
 export const SUBSCRIPTION_TIERS = ["free", "premium"] as const;
 export type SubscriptionTier = typeof SUBSCRIPTION_TIERS[number];
 
-// User table for multi-provider authentication
+// User table for multi-provider authentication (matches existing database)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: varchar("username").unique(),
   email: varchar("email").unique(),
-  password: varchar("password"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -59,6 +57,11 @@ export const users = pgTable("users", {
   subscriptionEndDate: timestamp("subscription_end_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Legacy columns from NextAuth migration - kept for database compatibility
+  passwordHash: varchar("password_hash"),
+  name: varchar("name"),
+  emailVerified: timestamp("email_verified"),
+  image: varchar("image"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({

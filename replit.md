@@ -41,10 +41,15 @@ Preferred communication style: Simple, everyday language.
 - **System**: Replit Auth (OpenID Connect OAuth 2.0)
 - **Providers**: Google, GitHub, Apple, X (Twitter), email/password
 - **Session Management**: PostgreSQL-backed sessions via connect-pg-simple
+  - 30-day session duration (extended for uninterrupted playback)
+  - Rolling session expiry (resets on each request for active users)
 - **Token Handling**: Automatic access token refresh using refresh tokens
+  - Silent refresh middleware refreshes tokens ~5-10 minutes before expiry
+  - Background refresh every 10 minutes while tab is visible
+  - Visibility-based re-authentication when tab becomes active
 - **User Storage**: PostgreSQL database with Drizzle ORM
 - **Security**: sameSite cookies, httpOnly, secure in production, CSRF protection
-- **Client Integration**: useAuth React hook, landing page for logged-out users
+- **Client Integration**: useAuth React hook with TanStack Query auto-refresh, landing page for logged-out users
 
 ### Accessibility Features
 - **Visual Accessibility**: High contrast mode, dyslexia-friendly font options, dark mode support
