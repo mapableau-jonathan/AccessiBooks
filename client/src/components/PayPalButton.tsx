@@ -6,7 +6,7 @@
 // Retain this comment after all edits.
 //
 // <BEGIN_EXACT_CODE>
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 declare global {
   namespace JSX {
@@ -34,6 +34,9 @@ export default function PayPalButton({
   onSuccess,
   onError,
 }: PayPalButtonProps) {
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
   const createOrder = async () => {
     const orderPayload = {
       amount: amount,
@@ -82,8 +85,18 @@ export default function PayPalButton({
   };
 
   useEffect(() => {
-    const loadPayPalSDK = async () => {
+    const checkAndLoadPayPal = async () => {
       try {
+        // First check if PayPal is available
+        const setupResponse = await fetch("/paypal/setup");
+        if (!setupResponse.ok) {
+          console.warn("PayPal not configured");
+          setIsAvailable(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        // PayPal is available, load SDK
         if (!(window as any).paypal) {
           const script = document.createElement("script");
           const isProd = (import.meta as any).env?.PROD || false;
@@ -91,17 +104,27 @@ export default function PayPalButton({
             ? "https://www.paypal.com/web-sdk/v6/core"
             : "https://www.sandbox.paypal.com/web-sdk/v6/core";
           script.async = true;
-          script.onload = () => initPayPal();
+          script.onload = () => {
+            initPayPal();
+            setIsLoading(false);
+          };
+          script.onerror = () => {
+            setIsAvailable(false);
+            setIsLoading(false);
+          };
           document.body.appendChild(script);
         } else {
           await initPayPal();
+          setIsLoading(false);
         }
       } catch (e) {
         console.error("Failed to load PayPal SDK", e);
+        setIsAvailable(false);
+        setIsLoading(false);
       }
     };
 
-    loadPayPalSDK();
+    checkAndLoadPayPal();
   }, []);
   const initPayPal = async () => {
     try {
@@ -149,6 +172,22 @@ export default function PayPalButton({
       console.error(e);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-4 text-muted-foreground">
+        Loading PayPal...
+      </div>
+    );
+  }
+
+  if (!isAvailable) {
+    return (
+      <div className="text-center py-4 text-muted-foreground">
+        PayPal is not available at this time
+      </div>
+    );
+  }
 
   return <paypal-button id="paypal-button"></paypal-button>;
 }

@@ -890,7 +890,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crypto/webhook - Coinbase Commerce webhook
-  app.post("/api/crypto/webhook", async (req, res) => {
+  // Note: This route needs raw body for signature verification
+  // The body is already available as req.body since express.json() runs globally
+  // For production, consider adding express.raw() middleware specifically for this route
+  app.post("/api/crypto/webhook", express.text({ type: "application/json" }), async (req, res) => {
+    // Parse the raw text body if needed
+    if (typeof req.body === "string") {
+      try {
+        (req as any).rawBody = req.body;
+        req.body = JSON.parse(req.body);
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid JSON" });
+      }
+    }
     await handleCoinbaseWebhook(req, res);
   });
 
