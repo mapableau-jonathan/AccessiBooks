@@ -1,0 +1,459 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { localStorageService, AccessibilitySettings } from "@/lib/storage";
+import {
+  Accessibility,
+  X,
+  RotateCcw,
+  Eye,
+  Type,
+  MousePointer,
+  Zap,
+  Brain,
+  Glasses,
+  Sun,
+  Moon,
+  Contrast,
+  Link,
+  Focus,
+  BookOpen,
+  Pause,
+  Layers,
+} from "lucide-react";
+
+interface AccessibilityProfile {
+  id: string;
+  name: string;
+  icon: typeof Accessibility;
+  description: string;
+  settings: Partial<AccessibilitySettings>;
+}
+
+const accessibilityProfiles: AccessibilityProfile[] = [
+  {
+    id: "vision-impaired",
+    name: "Vision Impaired",
+    icon: Glasses,
+    description: "Larger text, high contrast, enhanced focus",
+    settings: {
+      highContrast: true,
+      fontSize: 130,
+      lineHeight: 150,
+      highlightFocus: true,
+      largerCursor: true,
+    },
+  },
+  {
+    id: "cognitive-friendly",
+    name: "ADHD Friendly",
+    icon: Brain,
+    description: "Reduced distractions, clear focus",
+    settings: {
+      pauseAnimations: true,
+      highlightFocus: true,
+      readingGuide: true,
+      lineHeight: 130,
+      letterSpacing: 2,
+    },
+  },
+  {
+    id: "dyslexia-friendly",
+    name: "Dyslexia Friendly",
+    icon: Type,
+    description: "Optimized reading experience",
+    settings: {
+      dyslexiaFont: true,
+      fontSize: 115,
+      letterSpacing: 3,
+      lineHeight: 160,
+      highlightLinks: true,
+    },
+  },
+  {
+    id: "seizure-safe",
+    name: "Seizure Safe",
+    icon: Zap,
+    description: "No animations, reduced motion",
+    settings: {
+      pauseAnimations: true,
+      saturation: 80,
+    },
+  },
+  {
+    id: "motor-impaired",
+    name: "Motor Impaired",
+    icon: MousePointer,
+    description: "Enhanced navigation aids",
+    settings: {
+      largerCursor: true,
+      highlightFocus: true,
+      highlightLinks: true,
+    },
+  },
+];
+
+export function AccessibilityWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [settings, setSettings] = useState<AccessibilitySettings>(() =>
+    localStorageService.getSettings()
+  );
+  const [readingGuideY, setReadingGuideY] = useState(0);
+
+  useEffect(() => {
+    applySettings(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    if (settings.readingGuide) {
+      const handleMouseMove = (e: MouseEvent) => {
+        setReadingGuideY(e.clientY);
+      };
+      window.addEventListener("mousemove", handleMouseMove);
+      return () => window.removeEventListener("mousemove", handleMouseMove);
+    }
+  }, [settings.readingGuide]);
+
+  const applySettings = (s: AccessibilitySettings) => {
+    const root = document.documentElement;
+    root.classList.toggle("high-contrast", s.highContrast);
+    root.classList.toggle("dyslexia-font", s.dyslexiaFont);
+    root.classList.toggle("dark", s.darkMode);
+    root.classList.toggle("invert-colors", s.invertColors);
+    root.classList.toggle("highlight-links", s.highlightLinks);
+    root.classList.toggle("highlight-focus", s.highlightFocus);
+    root.classList.toggle("pause-animations", s.pauseAnimations);
+    root.classList.toggle("larger-cursor", s.largerCursor);
+    root.style.setProperty("--a11y-font-size", `${s.fontSize}%`);
+    root.style.setProperty("--a11y-letter-spacing", `${s.letterSpacing * 0.05}em`);
+    root.style.setProperty("--a11y-line-height", `${s.lineHeight}%`);
+    root.style.setProperty("--a11y-saturation", `${s.saturation}%`);
+  };
+
+  const updateSettings = (partial: Partial<AccessibilitySettings>) => {
+    const newSettings = { ...settings, ...partial, activeProfile: null };
+    setSettings(newSettings);
+    localStorageService.saveSettings(newSettings);
+  };
+
+  const applyProfile = (profile: AccessibilityProfile) => {
+    const newSettings = {
+      ...getDefaultSettings(),
+      ...profile.settings,
+      activeProfile: profile.id,
+    };
+    setSettings(newSettings);
+    localStorageService.saveSettings(newSettings);
+  };
+
+  const getDefaultSettings = (): AccessibilitySettings => ({
+    highContrast: false,
+    dyslexiaFont: false,
+    darkMode: false,
+    fontSize: 100,
+    letterSpacing: 0,
+    lineHeight: 100,
+    saturation: 100,
+    invertColors: false,
+    highlightLinks: false,
+    highlightFocus: false,
+    readingGuide: false,
+    pauseAnimations: false,
+    largerCursor: false,
+    readingMask: false,
+    activeProfile: null,
+  });
+
+  const resetSettings = () => {
+    const defaultSettings = getDefaultSettings();
+    setSettings(defaultSettings);
+    localStorageService.saveSettings(defaultSettings);
+  };
+
+  return (
+    <>
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 left-6 z-50 h-14 w-14 rounded-full shadow-lg"
+        size="icon"
+        aria-label="Open accessibility menu"
+        aria-expanded={isOpen}
+        data-testid="accessibility-widget-toggle"
+      >
+        <Accessibility className="h-6 w-6" />
+      </Button>
+
+      {isOpen && (
+        <Card 
+          className="fixed bottom-24 left-6 z-50 w-80 md:w-96 shadow-2xl border-2 max-h-[80vh]"
+          role="region"
+          aria-labelledby="a11y-panel-title"
+        >
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle asChild>
+                <h2 id="a11y-panel-title" className="flex items-center gap-2 text-lg font-semibold">
+                  <Accessibility className="h-5 w-5" aria-hidden="true" />
+                  Accessibility Options
+                </h2>
+              </CardTitle>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={resetSettings}
+                  aria-label="Reset all settings"
+                  title="Reset all settings"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close accessibility menu"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <ScrollArea className="max-h-[calc(80vh-80px)]">
+            <CardContent className="space-y-4 pt-2">
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Zap className="h-4 w-4" /> Quick Profiles
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {accessibilityProfiles.map((profile) => (
+                    <Button
+                      key={profile.id}
+                      variant={settings.activeProfile === profile.id ? "default" : "outline"}
+                      size="sm"
+                      className="h-auto py-2 px-3 flex flex-col items-start text-left"
+                      onClick={() => applyProfile(profile)}
+                    >
+                      <div className="flex items-center gap-1">
+                        <profile.icon className="h-3 w-3" />
+                        <span className="text-xs font-medium">{profile.name}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Eye className="h-4 w-4" /> Vision
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="dark-mode" className="flex items-center gap-2 text-sm">
+                      <Moon className="h-3 w-3" /> Dark Mode
+                    </Label>
+                    <Switch
+                      id="dark-mode"
+                      checked={settings.darkMode}
+                      onCheckedChange={(checked) => updateSettings({ darkMode: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="high-contrast" className="flex items-center gap-2 text-sm">
+                      <Contrast className="h-3 w-3" /> High Contrast
+                    </Label>
+                    <Switch
+                      id="high-contrast"
+                      checked={settings.highContrast}
+                      onCheckedChange={(checked) => updateSettings({ highContrast: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="invert-colors" className="flex items-center gap-2 text-sm">
+                      <Sun className="h-3 w-3" /> Invert Colors
+                    </Label>
+                    <Switch
+                      id="invert-colors"
+                      checked={settings.invertColors}
+                      onCheckedChange={(checked) => updateSettings({ invertColors: checked })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Saturation: {settings.saturation}%</Label>
+                    <Slider
+                      value={[settings.saturation]}
+                      min={0}
+                      max={200}
+                      step={10}
+                      onValueChange={([value]) => updateSettings({ saturation: value })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="larger-cursor" className="flex items-center gap-2 text-sm">
+                      <MousePointer className="h-3 w-3" /> Larger Cursor
+                    </Label>
+                    <Switch
+                      id="larger-cursor"
+                      checked={settings.largerCursor}
+                      onCheckedChange={(checked) => updateSettings({ largerCursor: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Type className="h-4 w-4" /> Reading
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="dyslexia-font" className="flex items-center gap-2 text-sm">
+                      <Type className="h-3 w-3" /> Dyslexia Font
+                    </Label>
+                    <Switch
+                      id="dyslexia-font"
+                      checked={settings.dyslexiaFont}
+                      onCheckedChange={(checked) => updateSettings({ dyslexiaFont: checked })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Font Size: {settings.fontSize}%</Label>
+                    <Slider
+                      value={[settings.fontSize]}
+                      min={80}
+                      max={200}
+                      step={5}
+                      onValueChange={([value]) => updateSettings({ fontSize: value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Letter Spacing: {settings.letterSpacing}</Label>
+                    <Slider
+                      value={[settings.letterSpacing]}
+                      min={0}
+                      max={10}
+                      step={1}
+                      onValueChange={([value]) => updateSettings({ letterSpacing: value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Line Height: {settings.lineHeight}%</Label>
+                    <Slider
+                      value={[settings.lineHeight]}
+                      min={100}
+                      max={200}
+                      step={10}
+                      onValueChange={([value]) => updateSettings({ lineHeight: value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Focus className="h-4 w-4" /> Navigation
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="highlight-links" className="flex items-center gap-2 text-sm">
+                      <Link className="h-3 w-3" /> Highlight Links
+                    </Label>
+                    <Switch
+                      id="highlight-links"
+                      checked={settings.highlightLinks}
+                      onCheckedChange={(checked) => updateSettings({ highlightLinks: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="highlight-focus" className="flex items-center gap-2 text-sm">
+                      <Focus className="h-3 w-3" /> Enhanced Focus
+                    </Label>
+                    <Switch
+                      id="highlight-focus"
+                      checked={settings.highlightFocus}
+                      onCheckedChange={(checked) => updateSettings({ highlightFocus: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="reading-guide" className="flex items-center gap-2 text-sm">
+                      <BookOpen className="h-3 w-3" /> Reading Guide
+                    </Label>
+                    <Switch
+                      id="reading-guide"
+                      checked={settings.readingGuide}
+                      onCheckedChange={(checked) => updateSettings({ readingGuide: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="reading-mask" className="flex items-center gap-2 text-sm">
+                      <Layers className="h-3 w-3" /> Reading Mask
+                    </Label>
+                    <Switch
+                      id="reading-mask"
+                      checked={settings.readingMask}
+                      onCheckedChange={(checked) => updateSettings({ readingMask: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Pause className="h-4 w-4" /> Content
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="pause-animations" className="flex items-center gap-2 text-sm">
+                      <Pause className="h-3 w-3" /> Pause Animations
+                    </Label>
+                    <Switch
+                      id="pause-animations"
+                      checked={settings.pauseAnimations}
+                      onCheckedChange={(checked) => updateSettings({ pauseAnimations: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </ScrollArea>
+        </Card>
+      )}
+
+      {settings.readingGuide && (
+        <div
+          className="fixed left-0 right-0 h-1 bg-primary/50 pointer-events-none z-40"
+          style={{ top: readingGuideY }}
+          aria-hidden="true"
+        />
+      )}
+
+      {settings.readingMask && (
+        <>
+          <div
+            className="fixed inset-x-0 top-0 bg-black/70 pointer-events-none z-40"
+            style={{ height: Math.max(0, readingGuideY - 60) }}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-x-0 bottom-0 bg-black/70 pointer-events-none z-40"
+            style={{ top: readingGuideY + 60 }}
+            aria-hidden="true"
+          />
+        </>
+      )}
+    </>
+  );
+}

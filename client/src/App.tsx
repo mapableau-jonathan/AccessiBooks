@@ -24,6 +24,7 @@ import { AudioProvider, useAudioContext } from "@/contexts/AudioContext";
 import { MiniPlayer } from "@/components/mini-player";
 import { PremiumBadge } from "@/components/premium-badge";
 import { SubscriptionCard } from "@/components/subscription-card";
+import { AccessibilityWidget } from "@/components/accessibility-widget";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 type View = "library" | "player";
@@ -925,6 +926,7 @@ function App() {
     <TooltipProvider>
       <AudioProvider>
         {isAuthenticated ? <MainApp /> : <LandingPage />}
+        <AccessibilityWidget />
         <Toaster />
       </AudioProvider>
     </TooltipProvider>
