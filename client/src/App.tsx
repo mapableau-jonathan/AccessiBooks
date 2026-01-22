@@ -482,7 +482,7 @@ function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30">
       {/* Navigation */}
       <nav className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="w-full px-4 md:px-8 py-4 flex justify-between items-center">
           <AccessiBooksLogo onClick={() => setMobileMenuOpen(!mobileMenuOpen)} />
           
           {/* Desktop Navigation */}
@@ -516,7 +516,7 @@ function LandingPage() {
             mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="container mx-auto px-4 py-4 space-y-4 border-t">
+          <div className="w-full px-4 md:px-8 py-4 space-y-4 border-t">
             <div className="flex justify-center">
               <AccessibilityControls />
             </div>
@@ -565,7 +565,7 @@ function LandingPage() {
       </nav>
       
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24">
+      <section className="w-full px-4 md:px-8 lg:px-16 py-16 md:py-24">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             Audiobooks for <span className="text-primary">Everyone</span>
@@ -589,7 +589,7 @@ function LandingPage() {
       </section>
       
       {/* Features Grid */}
-      <section className="container mx-auto px-4 py-16">
+      <section className="w-full px-4 md:px-8 lg:px-16 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-4">Why AccessiBooks?</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -617,7 +617,7 @@ function LandingPage() {
       </section>
       
       {/* CTA Section */}
-      <section className="container mx-auto px-4 py-16">
+      <section className="w-full px-4 md:px-8 lg:px-16 py-16">
         <Card className="max-w-4xl mx-auto bg-primary text-primary-foreground">
           <CardContent className="py-12 text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to Start Listening?</h2>
@@ -639,7 +639,7 @@ function LandingPage() {
       
       {/* Footer */}
       <footer className="border-t py-12 bg-muted/30">
-        <div className="container mx-auto px-4">
+        <div className="w-full px-4 md:px-8 lg:px-16">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             {/* Brand Column */}
             <div className="md:col-span-1">
