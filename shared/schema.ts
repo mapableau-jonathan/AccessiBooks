@@ -115,3 +115,122 @@ export interface Progress {
   currentTime: number;
   lastPlayed: string;
 }
+
+// User reviews for books
+export const reviews = pgTable("reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bookId: varchar("book_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  title: text("title"),
+  content: text("content"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_reviews_user").on(table.userId),
+  index("idx_reviews_book").on(table.bookId),
+  index("idx_reviews_created").on(table.createdAt),
+]);
+
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type Review = typeof reviews.$inferSelect;
+
+// Review likes/helpful votes
+export const reviewLikes = pgTable("review_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reviewId: varchar("review_id").notNull().references(() => reviews.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_review_likes_user").on(table.userId),
+  index("idx_review_likes_review").on(table.reviewId),
+]);
+
+export const insertReviewLikeSchema = createInsertSchema(reviewLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertReviewLike = z.infer<typeof insertReviewLikeSchema>;
+export type ReviewLike = typeof reviewLikes.$inferSelect;
+
+// User follows for social features
+export const userFollows = pgTable("user_follows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followingId: varchar("following_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_user_follows_follower").on(table.followerId),
+  index("idx_user_follows_following").on(table.followingId),
+]);
+
+export const insertUserFollowSchema = createInsertSchema(userFollows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
+export type UserFollow = typeof userFollows.$inferSelect;
+
+// External ratings cache
+export const externalRatings = pgTable("external_ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookId: varchar("book_id").notNull(),
+  source: varchar("source").notNull(), // google-books, itunes, open-library
+  rating: integer("rating"), // Normalized to 0-100 scale
+  reviewCount: integer("review_count"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+}, (table) => [
+  index("idx_external_ratings_book").on(table.bookId),
+]);
+
+export type ExternalRating = typeof externalRatings.$inferSelect;
+
+// Author metadata cache
+export const authors = pgTable("authors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  bio: text("bio"),
+  birthDate: varchar("birth_date"),
+  deathDate: varchar("death_date"),
+  photoUrl: text("photo_url"),
+  openLibraryKey: varchar("open_library_key"),
+  wikipedia: text("wikipedia"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+}, (table) => [
+  index("idx_authors_name").on(table.name),
+  index("idx_authors_ol_key").on(table.openLibraryKey),
+]);
+
+export type Author = typeof authors.$inferSelect;
+
+// Review with user info for display
+export interface ReviewWithUser extends Review {
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+  };
+  likesCount: number;
+  isLiked?: boolean;
+}
+
+// Aggregated ratings from multiple sources
+export interface AggregatedRatings {
+  averageRating: number; // 0-5 scale
+  totalReviews: number;
+  userRating?: number;
+  sources: {
+    name: string;
+    rating: number;
+    reviewCount: number;
+  }[];
+}

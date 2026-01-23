@@ -25,6 +25,23 @@ import {
   shouldShowAd,
   isShuffleModeRequired,
 } from "./monetization";
+import {
+  createReview,
+  updateReview,
+  deleteReview,
+  getReviewsByBook,
+  getReviewsByUser,
+  toggleReviewLike,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
+  isFollowing,
+  getSocialFeed,
+  getAggregatedRatings,
+  getAuthorByName,
+  getAuthorWorks,
+} from "./reviews";
 import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1243,6 +1260,258 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking ad status:", error);
       res.status(500).json({ message: "Failed to check ad status" });
+    }
+  });
+
+  // ============ REVIEWS AND SOCIAL ENDPOINTS ============
+
+  // GET /api/books/:bookId/reviews - Get reviews for a book
+  app.get("/api/books/:bookId/reviews", async (req: any, res) => {
+    try {
+      const { bookId } = req.params;
+      const currentUserId = req.user?.id;
+      const reviews = await getReviewsByBook(bookId, currentUserId);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // GET /api/books/:bookId/ratings - Get aggregated ratings for a book
+  app.get("/api/books/:bookId/ratings", async (req: any, res) => {
+    try {
+      const { bookId } = req.params;
+      const { title, author } = req.query;
+      
+      if (!title || !author) {
+        return res.status(400).json({ message: "Title and author are required" });
+      }
+      
+      const ratings = await getAggregatedRatings(bookId, title as string, author as string);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching ratings:", error);
+      res.status(500).json({ message: "Failed to fetch ratings" });
+    }
+  });
+
+  // POST /api/reviews - Create a new review
+  app.post("/api/reviews", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { bookId, rating, title, content } = req.body;
+      
+      if (!bookId || !rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Book ID and rating (1-5) are required" });
+      }
+
+      const review = await createReview({ userId, bookId, rating, title, content });
+      res.status(201).json(review);
+    } catch (error) {
+      console.error("Error creating review:", error);
+      res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+
+  // PUT /api/reviews/:id - Update a review
+  app.put("/api/reviews/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { id } = req.params;
+      const { rating, title, content } = req.body;
+
+      const review = await updateReview(id, userId, { rating, title, content });
+      if (!review) {
+        return res.status(404).json({ message: "Review not found or not authorized" });
+      }
+      res.json(review);
+    } catch (error) {
+      console.error("Error updating review:", error);
+      res.status(500).json({ message: "Failed to update review" });
+    }
+  });
+
+  // DELETE /api/reviews/:id - Delete a review
+  app.delete("/api/reviews/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { id } = req.params;
+      const deleted = await deleteReview(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Review not found or not authorized" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+
+  // POST /api/reviews/:id/like - Toggle like on a review
+  app.post("/api/reviews/:id/like", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { id } = req.params;
+      const isLiked = await toggleReviewLike(id, userId);
+      res.json({ isLiked });
+    } catch (error) {
+      console.error("Error toggling review like:", error);
+      res.status(500).json({ message: "Failed to toggle like" });
+    }
+  });
+
+  // GET /api/users/:userId/reviews - Get reviews by a user
+  app.get("/api/users/:userId/reviews", async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const reviews = await getReviewsByUser(userId);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching user reviews:", error);
+      res.status(500).json({ message: "Failed to fetch user reviews" });
+    }
+  });
+
+  // POST /api/users/:userId/follow - Follow a user
+  app.post("/api/users/:userId/follow", isAuthenticated, async (req: any, res) => {
+    try {
+      const followerId = req.user?.id;
+      if (!followerId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { userId: followingId } = req.params;
+      const success = await followUser(followerId, followingId);
+      res.json({ success, following: true });
+    } catch (error) {
+      console.error("Error following user:", error);
+      res.status(500).json({ message: "Failed to follow user" });
+    }
+  });
+
+  // DELETE /api/users/:userId/follow - Unfollow a user
+  app.delete("/api/users/:userId/follow", isAuthenticated, async (req: any, res) => {
+    try {
+      const followerId = req.user?.id;
+      if (!followerId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { userId: followingId } = req.params;
+      await unfollowUser(followerId, followingId);
+      res.json({ success: true, following: false });
+    } catch (error) {
+      console.error("Error unfollowing user:", error);
+      res.status(500).json({ message: "Failed to unfollow user" });
+    }
+  });
+
+  // GET /api/users/:userId/followers - Get followers
+  app.get("/api/users/:userId/followers", async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const followers = await getFollowers(userId);
+      res.json({ followers, count: followers.length });
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+      res.status(500).json({ message: "Failed to fetch followers" });
+    }
+  });
+
+  // GET /api/users/:userId/following - Get following
+  app.get("/api/users/:userId/following", async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const following = await getFollowing(userId);
+      res.json({ following, count: following.length });
+    } catch (error) {
+      console.error("Error fetching following:", error);
+      res.status(500).json({ message: "Failed to fetch following" });
+    }
+  });
+
+  // GET /api/users/:userId/is-following - Check if following
+  app.get("/api/users/:userId/is-following", isAuthenticated, async (req: any, res) => {
+    try {
+      const followerId = req.user?.id;
+      if (!followerId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { userId: followingId } = req.params;
+      const following = await isFollowing(followerId, followingId);
+      res.json({ following });
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
+
+  // GET /api/feed - Get social feed (reviews from followed users)
+  app.get("/api/feed", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { limit = 20 } = req.query;
+      const feed = await getSocialFeed(userId, parseInt(limit as string, 10));
+      res.json(feed);
+    } catch (error) {
+      console.error("Error fetching feed:", error);
+      res.status(500).json({ message: "Failed to fetch feed" });
+    }
+  });
+
+  // GET /api/authors/:name - Get author details
+  app.get("/api/authors/:name", async (req: any, res) => {
+    try {
+      const { name } = req.params;
+      const author = await getAuthorByName(decodeURIComponent(name));
+      if (!author) {
+        return res.status(404).json({ message: "Author not found" });
+      }
+      res.json(author);
+    } catch (error) {
+      console.error("Error fetching author:", error);
+      res.status(500).json({ message: "Failed to fetch author" });
+    }
+  });
+
+  // GET /api/authors/:name/works - Get author's works
+  app.get("/api/authors/:name/works", async (req: any, res) => {
+    try {
+      const { name } = req.params;
+      const { limit = 20 } = req.query;
+      
+      const author = await getAuthorByName(decodeURIComponent(name));
+      if (!author || !author.openLibraryKey) {
+        return res.json({ works: [] });
+      }
+      
+      const works = await getAuthorWorks(author.openLibraryKey, parseInt(limit as string, 10));
+      res.json({ author, works });
+    } catch (error) {
+      console.error("Error fetching author works:", error);
+      res.status(500).json({ message: "Failed to fetch author works" });
     }
   });
 
